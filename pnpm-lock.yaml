@@ -142,6 +142,9 @@ importers:
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.1)
+      espn-fantasy-football-api:
+        specifier: ^2.0.1
+        version: 2.0.1
       express:
         specifier: ^4.21.2
         version: 4.21.2
@@ -2976,6 +2979,10 @@ packages:
   escape-string-regexp@5.0.0:
     resolution: {integrity: sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw==}
     engines: {node: '>=12'}
+
+  espn-fantasy-football-api@2.0.1:
+    resolution: {integrity: sha512-zDD6nPVLWKB9Qzw5iQshbPxWKRzojHgCRBNY/FscZxSegnmkbg/Pmg/cdIIveKvnuGyMZwnZ3jzaichY9Mg6Yg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   estree-util-is-identifier-name@3.0.0:
     resolution: {integrity: sha512-hFtqIDZTIUZ9BXLb8y4pYGyk6+wekIivNVTcmvk8NoOh+VeRn5y6cEHzbURrWbfp1fIqdVipilzj+lfaadNZmg==}
@@ -7310,6 +7317,13 @@ snapshots:
   escape-html@1.0.3: {}
 
   escape-string-regexp@5.0.0: {}
+
+  espn-fantasy-football-api@2.0.1:
+    dependencies:
+      axios: 1.12.2
+      lodash: 4.17.21
+    transitivePeerDependencies:
+      - debug
 
   estree-util-is-identifier-name@3.0.0: {}
 
