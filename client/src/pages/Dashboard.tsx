@@ -52,13 +52,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <Trophy className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-card-foreground">Fantasy Football Tracker</h1>
+                <h1 className="text-2xl font-bold text-card-foreground">Trouble in Paradise</h1>
                 <p className="text-sm text-muted-foreground">Welcome back, {user.name}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={restartTutorial} size="sm">
+              <Button variant="outline" onClick={() => setLocation("/faq")} size="sm">
                 <HelpCircle className="mr-2 h-4 w-4" />
+                Help & FAQ
+              </Button>
+              <Button variant="outline" onClick={restartTutorial} size="sm">
                 Tutorial
               </Button>
               <Button onClick={() => setLocation("/setup")} size="sm">

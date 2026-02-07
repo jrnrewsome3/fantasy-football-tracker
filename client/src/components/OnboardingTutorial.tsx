@@ -15,7 +15,7 @@ interface TutorialStep {
 const tutorialSteps: TutorialStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Fantasy Football Tracker!",
+    title: "Welcome to Trouble in Paradise!",
     description: "Track your ESPN Fantasy Football league stats, view historical records, analyze matchups, and discover insights to dominate your league. Let's get you started!",
     icon: <Trophy className="h-8 w-8 text-primary" />,
   },

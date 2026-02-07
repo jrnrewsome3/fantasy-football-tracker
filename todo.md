@@ -115,3 +115,15 @@
 - [x] Create dashboard navigation tutorial step
 - [x] Add tutorial for viewing league stats and matchups
 - [x] Implement skip and restart tutorial options
+
+## Rebranding
+- [x] Update app name to "Trouble in Paradise Fantasy Football Tracker"
+- [x] Update all page titles and headers
+- [ ] Update meta tags and browser title (requires manual update in Management UI Settings)
+- [x] Update dashboard welcome messages
+
+## FAQ / Help Center
+- [x] Create FAQ page with comprehensive questions and answers
+- [x] Add sections for Getting Started, ESPN Integration, Features, Troubleshooting
+- [x] Include feature showcase explaining all capabilities
+- [x] Add navigation link to FAQ from dashboard
