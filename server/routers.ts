@@ -199,6 +199,15 @@ export const appRouter = router({
         return await getOwnerLeaderboard(input.espnLeagueId);
       }),
   }),
+
+  // User/Dashboard statistics
+  stats: router({  
+    // Get aggregate statistics across all leagues
+    aggregateStats: protectedProcedure.query(async () => {
+      const { getUserAggregateStats } = await import('./userStatsDb');
+      return await getUserAggregateStats();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

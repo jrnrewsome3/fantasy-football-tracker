@@ -383,3 +383,11 @@
 - [x] Add dynamic labels based on viewMode (alltime vs single)
 - [x] Ensure aggregation uses ESPN ID not team names (already implemented, now ID is visible)
 - [x] Test that single season mode shows only that season's data
+
+## Dashboard Stats Cards Update
+- [x] Calculate user's overall win rate across all leagues/teams
+- [x] Calculate longest win streak across all matchups
+- [x] Calculate longest loss streak
+- [x] Update Dashboard UI to replace blank cards with new stats
+- [x] Add backend tRPC procedure for user aggregate stats (stats.aggregateStats)
+- [ ] Test stats calculations with real data
