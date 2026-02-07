@@ -127,3 +127,13 @@
 - [x] Add sections for Getting Started, ESPN Integration, Features, Troubleshooting
 - [x] Include feature showcase explaining all capabilities
 - [x] Add navigation link to FAQ from dashboard
+
+## ESPN Sync Issues & Enhancements
+- [x] Debug and fix ESPN sync failure for league 1489106 (added better error messages for private leagues)
+- [ ] Test with user's actual ESPN league credentials
+- [x] Enhance sync to automatically pull ALL historical seasons (not just current)
+- [x] Store multi-year data for comprehensive historical analysis
+- [ ] Add season selector to view stats by year
+- [ ] Build historical matchup stories feature
+- [ ] Create championship history timeline
+- [ ] Add season-over-season comparison views

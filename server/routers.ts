@@ -46,6 +46,22 @@ export const appRouter = router({
         );
       }),
 
+    // Sync all historical seasons
+    syncAllSeasons: protectedProcedure
+      .input(z.object({
+        espnLeagueId: z.string(),
+        espnS2: z.string().optional(),
+        swid: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { syncAllSeasons } = await import('./espnMultiSeasonSync');
+        return await syncAllSeasons(
+          input.espnLeagueId,
+          input.espnS2,
+          input.swid
+        );
+      }),
+
     // Get teams for a league
     teams: protectedProcedure
       .input(z.object({ leagueId: z.number() }))
