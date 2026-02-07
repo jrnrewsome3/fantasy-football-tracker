@@ -3,13 +3,15 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, TrendingUp, Activity, Plus, Loader2 } from "lucide-react";
+import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
+import { useRestartTutorial } from "@/components/OnboardingTutorial";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const restartTutorial = useRestartTutorial();
 
   const { data: leagues, isLoading: leaguesLoading } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -54,10 +56,16 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Welcome back, {user.name}</p>
               </div>
             </div>
-            <Button onClick={() => setLocation("/setup")} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add League
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={restartTutorial} size="sm">
+                <HelpCircle className="mr-2 h-4 w-4" />
+                Tutorial
+              </Button>
+              <Button onClick={() => setLocation("/setup")} size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Add League
+              </Button>
+            </div>
           </div>
         </div>
       </div>

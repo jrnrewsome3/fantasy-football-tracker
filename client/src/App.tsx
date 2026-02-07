@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import LeagueSetup from "./pages/LeagueSetup";
 import LeagueDetail from "./pages/LeagueDetail";
+import OnboardingTutorial from "./components/OnboardingTutorial";
 
 function Router() {
   return (
@@ -29,6 +30,7 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
+          <OnboardingTutorial />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

@@ -106,3 +106,12 @@
 
 ## Issues
 - [x] Fix publish blocking issue reported by user (fixed ESPN API import for production build)
+
+## Onboarding Tutorial
+- [x] Create tutorial overlay component with step-by-step guidance
+- [x] Add tutorial state management (track progress, completion)
+- [x] Build welcome step explaining app features
+- [x] Add ESPN league connection tutorial step
+- [x] Create dashboard navigation tutorial step
+- [x] Add tutorial for viewing league stats and matchups
+- [x] Implement skip and restart tutorial options
