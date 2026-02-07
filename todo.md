@@ -305,3 +305,24 @@
 - [x] Write and pass vitest tests for team consolidation logic
 - [x] Test that teams with name changes appear as single entry
 - [x] Verify stats are correctly summed across name changes
+
+## Mobile Responsiveness (CRITICAL - iPhone/iPad)
+- [x] Fix overlapping text in matchup cards on mobile
+- [x] Prevent team names from cutting into scores
+- [x] Optimize font sizes for mobile screens (text-xs sm:text-sm pattern)
+- [x] Fix card layouts to stack properly on small screens
+- [x] Redesign matchup cards with mobile-first layout (vertical on mobile, horizontal on desktop)
+- [x] Add score display on mobile next to each team
+- [x] Implement text truncation with line-clamp-1 for long team names
+- [x] Set max-width constraints for team names on mobile (140px)
+- [x] Make navigation tabs touch-friendly and properly spaced
+- [x] Add horizontal scrolling for tabs with proper padding
+- [x] Reduce tab font sizes on mobile (text-xs) and padding (px-3)
+- [x] Ensure all text is readable without horizontal scrolling
+- [x] Add proper padding and margins for mobile
+- [x] Make buttons and interactive elements thumb-friendly
+- [x] Optimize standings table for mobile viewing
+- [x] Add horizontal scroll wrapper for standings table
+- [x] Hide less critical columns on mobile (T, PA, Diff)
+- [x] Reduce font sizes in table cells for mobile
+- [x] Add min-width constraints to prevent column collapse

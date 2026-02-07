@@ -315,13 +315,15 @@ export default function LeagueDetail() {
 
         {/* Tabs */}
         <Tabs defaultValue="standings" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-            <TabsTrigger value="matchups">Matchups</TabsTrigger>
-            <TabsTrigger value="alltime">All-Time Stats</TabsTrigger>
-            <TabsTrigger value="ai">AI Assistant</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="w-full sm:w-auto inline-flex min-w-max">
+              <TabsTrigger value="standings" className="text-xs sm:text-sm px-3 sm:px-4">Standings</TabsTrigger>
+              <TabsTrigger value="matchups" className="text-xs sm:text-sm px-3 sm:px-4">Matchups</TabsTrigger>
+              <TabsTrigger value="alltime" className="text-xs sm:text-sm px-3 sm:px-4">All-Time Stats</TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs sm:text-sm px-3 sm:px-4">AI Assistant</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-4">Activity</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="standings" className="space-y-4">
             <Card>
@@ -363,49 +365,51 @@ export default function LeagueDetail() {
                     ))}
                   </div>
                 ) : sortedTeams.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">#</TableHead>
-                        <TableHead>Team</TableHead>
-                        <TableHead className="text-center">W</TableHead>
-                        <TableHead className="text-center">L</TableHead>
-                        <TableHead className="text-center">T</TableHead>
-                        <TableHead className="text-right">PF</TableHead>
-                        <TableHead className="text-right">PA</TableHead>
-                        <TableHead className="text-right">Diff</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedTeams.map((team, index) => (
-                        <TableRow 
-                          key={team.id} 
-                          className="cursor-pointer hover:bg-accent/50"
-                          onClick={() => setLocation(`/team/${team.espnTeamId}/${league.espnLeagueId}/history`)}
-                        >
-                          <TableCell className="font-medium">{index + 1}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-semibold text-card-foreground">{team.name}</div>
-                              {team.ownerName && (
-                                <div className="text-sm text-muted-foreground">{team.ownerName}</div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{team.wins}</TableCell>
-                          <TableCell className="text-center">{team.losses}</TableCell>
-                          <TableCell className="text-center">{team.ties}</TableCell>
-                          <TableCell className="text-right">{(team.pointsFor || 0).toFixed(1)}</TableCell>
-                          <TableCell className="text-right">{(team.pointsAgainst || 0).toFixed(1)}</TableCell>
-                          <TableCell className="text-right">
-                            <span className={(team.pointsFor || 0) - (team.pointsAgainst || 0) > 0 ? "text-green-500" : "text-red-500"}>
-                              {((team.pointsFor || 0) - (team.pointsAgainst || 0)).toFixed(1)}
-                            </span>
-                          </TableCell>
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8 sm:w-12 text-xs sm:text-sm">#</TableHead>
+                          <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">Team</TableHead>
+                          <TableHead className="text-center text-xs sm:text-sm">W</TableHead>
+                          <TableHead className="text-center text-xs sm:text-sm">L</TableHead>
+                          <TableHead className="text-center text-xs sm:text-sm hidden sm:table-cell">T</TableHead>
+                          <TableHead className="text-right text-xs sm:text-sm">PF</TableHead>
+                          <TableHead className="text-right text-xs sm:text-sm hidden md:table-cell">PA</TableHead>
+                          <TableHead className="text-right text-xs sm:text-sm hidden md:table-cell">Diff</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedTeams.map((team, index) => (
+                          <TableRow 
+                            key={team.id} 
+                            className="cursor-pointer hover:bg-accent/50"
+                            onClick={() => setLocation(`/team/${team.espnTeamId}/${league.espnLeagueId}/history`)}
+                          >
+                            <TableCell className="font-medium text-xs sm:text-sm">{index + 1}</TableCell>
+                            <TableCell className="min-w-[140px] sm:min-w-0">
+                              <div>
+                                <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">{team.name}</div>
+                                {team.ownerName && (
+                                  <div className="text-xs text-muted-foreground line-clamp-1 hidden sm:block">{team.ownerName}</div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.wins || 0}</TableCell>
+                            <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.losses || 0}</TableCell>
+                            <TableCell className="text-center text-xs sm:text-sm hidden sm:table-cell">{team.ties || 0}</TableCell>
+                            <TableCell className="text-right text-xs sm:text-sm">{(team.pointsFor || 0).toFixed(1)}</TableCell>
+                            <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">{(team.pointsAgainst || 0).toFixed(1)}</TableCell>
+                            <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">
+                              <span className={(team.pointsFor || 0) - (team.pointsAgainst || 0) >= 0 ? "text-primary" : "text-destructive"}>
+                                {((team.pointsFor || 0) - (team.pointsAgainst || 0)).toFixed(1)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No teams found. Sync your league data to see standings.
