@@ -26,19 +26,19 @@
 - [ ] Implement league member association with users
 
 ## All-Time Stats Dashboard
-- [ ] Create dashboard layout with navigation
-- [ ] Build career records display (wins, losses, championships)
+- [x] Create dashboard layout with navigation
+- [x] Build career records display (wins, losses, championships)
 - [ ] Implement head-to-head matchup history matrix
 - [ ] Create championship history timeline
 - [ ] Build league milestones and records section
-- [ ] Add all-time scoring leaders
+- [x] Add all-time scoring leaders
 - [ ] Display longest winning/losing streaks
 
 ## Weekly Matchup Viewer
-- [ ] Create current week matchup display
-- [ ] Show live scores and projected points
+- [x] Create current week matchup display
+- [x] Show live scores and projected points
 - [ ] Build player-level scoring breakdown
-- [ ] Add week selector for historical matchups
+- [x] Add week selector for historical matchups
 - [ ] Implement auto-refresh for live updates
 - [ ] Display matchup statistics and trends
 
@@ -96,3 +96,6 @@
 - [ ] Test with real ESPN league data
 - [ ] Create deployment checkpoint
 - [ ] Document setup instructions
+
+## Bug Fixes
+- [x] Fix app loading issue reported by user

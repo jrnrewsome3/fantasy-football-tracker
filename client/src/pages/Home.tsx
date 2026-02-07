@@ -3,10 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Trophy, BarChart3, Users, Activity, ArrowRight, Loader2 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user && !loading) {
+      setLocation("/dashboard");
+    }
+  }, [user, loading, setLocation]);
 
   if (loading) {
     return (
@@ -16,9 +24,7 @@ export default function Home() {
     );
   }
 
-  // Redirect to dashboard if already logged in
   if (user) {
-    setLocation("/dashboard");
     return null;
   }
 
