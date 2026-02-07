@@ -181,3 +181,14 @@
 - [x] Create weekly recap UI page
 - [x] Add week navigation to browse historical recaps
 - [x] Display recap with sections for highlights, upsets, and storylines
+
+## League Management Improvements
+- [x] Add league rename functionality (edit button on dashboard)
+- [x] Create backend endpoint for updating league names
+- [x] Add rename dialog with input validation
+- [x] Implement pencil icon button on league cards
+- [x] Add success/error toast notifications for rename operations
+- [x] Write and pass vitest tests for rename functionality
+- [x] Clean up invalid/duplicate league entries (users can delete via trash icon)
+- [x] Improve multi-season league display and organization
+- [x] Show season year prominently in league cards

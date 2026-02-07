@@ -3,11 +3,14 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle, Trash2 } from "lucide-react";
+import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle, Trash2, Pencil } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useRestartTutorial } from "@/components/OnboardingTutorial";
 import { toast } from "sonner";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +21,10 @@ export default function Dashboard() {
   const { data: leagues, isLoading: leaguesLoading } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
+
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState<{ id: number; name: string } | null>(null);
+  const [newName, setNewName] = useState("");
 
   const deleteMutation = trpc.league.delete.useMutation({
     onSuccess: () => {
@@ -31,10 +38,38 @@ export default function Dashboard() {
     },
   });
 
+  const renameMutation = trpc.league.rename.useMutation({
+    onSuccess: () => {
+      toast.success("League renamed successfully");
+      utils.league.list.invalidate();
+      setRenameDialogOpen(false);
+      setSelectedLeague(null);
+      setNewName("");
+    },
+    onError: (error) => {
+      toast.error("Failed to rename league", {
+        description: error.message,
+      });
+    },
+  });
+
   const handleDelete = (e: React.MouseEvent, leagueId: number, leagueName: string) => {
     e.stopPropagation();
     if (confirm(`Are you sure you want to delete "${leagueName}"? This will remove all associated data.`)) {
       deleteMutation.mutate({ leagueId });
+    }
+  };
+
+  const handleRenameClick = (e: React.MouseEvent, league: { id: number; name: string }) => {
+    e.stopPropagation();
+    setSelectedLeague(league);
+    setNewName(league.name);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameSubmit = () => {
+    if (selectedLeague && newName.trim()) {
+      renameMutation.mutate({ leagueId: selectedLeague.id, newName: newName.trim() });
     }
   };
 
@@ -190,6 +225,14 @@ export default function Dashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={(e) => handleRenameClick(e, { id: league.id, name: league.name })}
+                        disabled={renameMutation.isPending}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={(e) => handleDelete(e, league.id, league.name)}
                         disabled={deleteMutation.isPending}
                       >
@@ -218,6 +261,48 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename League</DialogTitle>
+            <DialogDescription>
+              Give your league a custom name to help identify it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Enter league name"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameSubmit();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameSubmit}
+              disabled={!newName.trim() || renameMutation.isPending}
+            >
+              {renameMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

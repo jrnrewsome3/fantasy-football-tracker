@@ -89,6 +89,22 @@ export async function deleteLeague(leagueId: number): Promise<{ success: boolean
   }
 }
 
+export async function renameLeague(leagueId: number, newName: string): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: 'Database not available' };
+
+  try {
+    await db.update(leagues)
+      .set({ name: newName, updatedAt: new Date() })
+      .where(eq(leagues.id, leagueId));
+
+    return { success: true, message: 'League renamed successfully' };
+  } catch (error: any) {
+    console.error('[LeagueDB] Error renaming league:', error);
+    return { success: false, message: error.message || 'Failed to rename league' };
+  }
+}
+
 // ============ TEAMS ============
 
 export async function upsertTeam(team: InsertTeam): Promise<Team | null> {

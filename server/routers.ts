@@ -109,6 +109,17 @@ export const appRouter = router({
         return await deleteLeague(input.leagueId);
       }),
 
+    // Rename a league
+    rename: protectedProcedure
+      .input(z.object({ 
+        leagueId: z.number(),
+        newName: z.string().min(1).max(255)
+      }))
+      .mutation(async ({ input }) => {
+        const { renameLeague } = await import('./leagueDb');
+        return await renameLeague(input.leagueId, input.newName);
+      }),
+
     // AI-powered data query
     aiQuery: protectedProcedure
       .input(z.object({
