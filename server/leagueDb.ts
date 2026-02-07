@@ -63,48 +63,6 @@ export async function getAllLeagues(): Promise<League[]> {
   return await db.select().from(leagues).orderBy(desc(leagues.updatedAt));
 }
 
-export async function deleteLeague(leagueId: number): Promise<{ success: boolean; message: string }> {
-  const db = await getDb();
-  if (!db) return { success: false, message: 'Database not available' };
-
-  try {
-    // Delete all related data first (cascade)
-    // Note: teamAllTimeStats links to teamId, not leagueId
-    // We need to delete stats for teams in this league
-    const leagueTeams = await db.select().from(teams).where(eq(teams.leagueId, leagueId));
-    for (const team of leagueTeams) {
-      await db.delete(teamAllTimeStats).where(eq(teamAllTimeStats.teamId, team.id));
-    }
-    
-    await db.delete(playerStats).where(eq(playerStats.leagueId, leagueId));
-    await db.delete(transactions).where(eq(transactions.leagueId, leagueId));
-    await db.delete(matchups).where(eq(matchups.leagueId, leagueId));
-    await db.delete(teams).where(eq(teams.leagueId, leagueId));
-    await db.delete(leagues).where(eq(leagues.id, leagueId));
-
-    return { success: true, message: 'League and all related data deleted successfully' };
-  } catch (error: any) {
-    console.error('[LeagueDB] Error deleting league:', error);
-    return { success: false, message: error.message || 'Failed to delete league' };
-  }
-}
-
-export async function renameLeague(leagueId: number, newName: string): Promise<{ success: boolean; message: string }> {
-  const db = await getDb();
-  if (!db) return { success: false, message: 'Database not available' };
-
-  try {
-    await db.update(leagues)
-      .set({ name: newName, updatedAt: new Date() })
-      .where(eq(leagues.id, leagueId));
-
-    return { success: true, message: 'League renamed successfully' };
-  } catch (error: any) {
-    console.error('[LeagueDB] Error renaming league:', error);
-    return { success: false, message: error.message || 'Failed to rename league' };
-  }
-}
-
 // ============ TEAMS ============
 
 export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
@@ -124,7 +82,6 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
         ties: team.ties,
         pointsFor: team.pointsFor,
         pointsAgainst: team.pointsAgainst,
-        seasonYear: team.seasonYear,
         updatedAt: new Date(),
       },
     });
@@ -152,92 +109,32 @@ export async function getTeamsByLeague(leagueId: number): Promise<Team[]> {
     .orderBy(desc(teams.wins));
 }
 
-export async function getTeamsByLeagueAndSeason(leagueId: number, seasonYear: number): Promise<Team[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get all teams for this league and season
-  const allTeams = await db.select().from(teams)
-    .where(and(
-      eq(teams.leagueId, leagueId),
-      eq(teams.seasonYear, seasonYear)
-    ));
-
-  // Group by espnTeamId and aggregate stats
-  const teamMap = new Map<number, Team>();
-  
-  for (const team of allTeams) {
-    const existing = teamMap.get(team.espnTeamId);
-    
-    if (!existing) {
-      // First time seeing this espnTeamId, use this team
-      teamMap.set(team.espnTeamId, { ...team });
-    } else {
-      // Aggregate stats for same espnTeamId
-      existing.wins = (existing.wins || 0) + (team.wins || 0);
-      existing.losses = (existing.losses || 0) + (team.losses || 0);
-      existing.ties = (existing.ties || 0) + (team.ties || 0);
-      existing.pointsFor = (existing.pointsFor || 0) + (team.pointsFor || 0);
-      existing.pointsAgainst = (existing.pointsAgainst || 0) + (team.pointsAgainst || 0);
-      
-      // Use the most recent team name (higher id = more recent)
-      if (team.id > existing.id) {
-        existing.name = team.name;
-        existing.logoUrl = team.logoUrl;
-      }
-    }
-  }
-
-  // Convert map to array and sort by wins
-  return Array.from(teamMap.values()).sort((a, b) => (b.wins || 0) - (a.wins || 0));
-}
-
-export async function getTeamsByEspnLeagueAllTime(espnLeagueId: string): Promise<Team[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get all teams across all seasons for this ESPN league
-  const allTeams = await db.select().from(teams)
-    .innerJoin(leagues, eq(teams.leagueId, leagues.id))
-    .where(eq(leagues.espnLeagueId, espnLeagueId));
-
-  // Group by espnTeamId and aggregate career stats
-  const teamMap = new Map<number, Team>();
-  
-  for (const row of allTeams) {
-    const team = row.teams;
-    const existing = teamMap.get(team.espnTeamId);
-    
-    if (!existing) {
-      // First time seeing this espnTeamId, use this team
-      teamMap.set(team.espnTeamId, { ...team });
-    } else {
-      // Aggregate career stats for same espnTeamId
-      existing.wins = (existing.wins || 0) + (team.wins || 0);
-      existing.losses = (existing.losses || 0) + (team.losses || 0);
-      existing.ties = (existing.ties || 0) + (team.ties || 0);
-      existing.pointsFor = (existing.pointsFor || 0) + (team.pointsFor || 0);
-      existing.pointsAgainst = (existing.pointsAgainst || 0) + (team.pointsAgainst || 0);
-      
-      // Use the most recent team name (higher id = more recent)
-      if (team.id > existing.id) {
-        existing.name = team.name;
-        existing.logoUrl = team.logoUrl;
-        existing.ownerName = team.ownerName;
-      }
-    }
-  }
-
-  // Convert map to array and sort by career wins
-  return Array.from(teamMap.values()).sort((a, b) => (b.wins || 0) - (a.wins || 0));
-}
-
 export async function getTeamById(teamId: number): Promise<Team | null> {
   const db = await getDb();
   if (!db) return null;
 
   const result = await db.select().from(teams)
     .where(eq(teams.id, teamId))
+    .limit(1);
+
+  return result[0] || null;
+}
+
+export async function getTeamByEspnTeamId(
+  leagueId: number,
+  espnTeamId: number,
+  seasonYear: number
+): Promise<Team | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select().from(teams)
+    .where(
+      and(
+        eq(teams.leagueId, leagueId),
+        eq(teams.espnTeamId, espnTeamId)
+      )
+    )
     .limit(1);
 
   return result[0] || null;
@@ -431,174 +328,4 @@ export async function getTeamAllTimeStats(teamId: number): Promise<TeamAllTimeSt
     .limit(1);
 
   return result[0] || null;
-}
-
-// ============ TEAM HISTORY ============
-
-export async function getTeamHistory(espnTeamId: number, espnLeagueId: string): Promise<Team[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get all seasons for this ESPN team across all league instances
-  const leagueInstances = await db.select().from(leagues)
-    .where(eq(leagues.espnLeagueId, espnLeagueId));
-  
-  const leagueIds = leagueInstances.map(l => l.id);
-  if (leagueIds.length === 0) return [];
-
-  // Get team data for all seasons
-  const teamHistory = await db.select().from(teams)
-    .where(eq(teams.espnTeamId, espnTeamId))
-    .orderBy(desc(teams.seasonYear));
-
-  return teamHistory.filter(t => leagueIds.includes(t.leagueId));
-}
-
-// ============ SEASON SUMMARIES ============
-
-export async function getSeasonSummaries(espnLeagueId: string): Promise<Array<{
-  league: League;
-  teamCount: number;
-  totalGames: number;
-  topScorer: { name: string; points: number } | null;
-}>> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get all league instances (seasons) for this ESPN league
-  const leagueInstances = await db.select().from(leagues)
-    .where(eq(leagues.espnLeagueId, espnLeagueId))
-    .orderBy(desc(leagues.seasonYear));
-
-  const summaries = [];
-
-  for (const league of leagueInstances) {
-    // Get team count for this season
-    const seasonTeams = await db.select().from(teams)
-      .where(and(
-        eq(teams.leagueId, league.id),
-        eq(teams.seasonYear, league.seasonYear)
-      ));
-
-    // Get matchup count
-    const seasonMatchups = await db.select().from(matchups)
-      .where(and(
-        eq(matchups.leagueId, league.id),
-        eq(matchups.seasonYear, league.seasonYear)
-      ));
-
-    // Find top scorer
-    const topScorerTeam = seasonTeams.length > 0
-      ? seasonTeams.reduce((max, team) => 
-          (team.pointsFor || 0) > (max.pointsFor || 0) ? team : max
-        )
-      : null;
-
-    summaries.push({
-      league,
-      teamCount: seasonTeams.length,
-      totalGames: seasonMatchups.length,
-      topScorer: topScorerTeam ? {
-        name: topScorerTeam.name,
-        points: topScorerTeam.pointsFor || 0
-      } : null,
-    });
-  }
-
-  return summaries;
-}
-
-// ============ OWNER LEADERBOARD ============
-
-export async function getOwnerLeaderboard(espnLeagueId: string) {
-  const db = await getDb();
-  if (!db) return [];
-
-  try {
-    // Get all teams for this ESPN league across all seasons
-    const allTeams = await db.select().from(teams)
-      .innerJoin(leagues, eq(teams.leagueId, leagues.id))
-      .where(eq(leagues.espnLeagueId, espnLeagueId));
-
-    // Group by owner name and aggregate stats
-    const ownerStatsMap = new Map<string, {
-      ownerName: string;
-      totalWins: number;
-      totalLosses: number;
-      totalTies: number;
-      totalPointsFor: number;
-      totalPointsAgainst: number;
-      seasonsPlayed: number;
-      bestSeasonWins: number;
-      bestSeasonYear: number;
-      worstSeasonWins: number;
-      worstSeasonYear: number;
-    }>();
-
-    for (const { teams: team, leagues: league } of allTeams) {
-      if (!team.ownerName) continue;
-
-      const existing = ownerStatsMap.get(team.ownerName);
-      const wins = team.wins || 0;
-      const losses = team.losses || 0;
-      const ties = team.ties || 0;
-      const pf = team.pointsFor || 0;
-      const pa = team.pointsAgainst || 0;
-
-      if (existing) {
-        existing.totalWins += wins;
-        existing.totalLosses += losses;
-        existing.totalTies += ties;
-        existing.totalPointsFor += pf;
-        existing.totalPointsAgainst += pa;
-        existing.seasonsPlayed += 1;
-
-        // Track best season
-        if (wins > existing.bestSeasonWins) {
-          existing.bestSeasonWins = wins;
-          existing.bestSeasonYear = league.seasonYear;
-        }
-
-        // Track worst season
-        if (wins < existing.worstSeasonWins) {
-          existing.worstSeasonWins = wins;
-          existing.worstSeasonYear = league.seasonYear;
-        }
-      } else {
-        ownerStatsMap.set(team.ownerName, {
-          ownerName: team.ownerName,
-          totalWins: wins,
-          totalLosses: losses,
-          totalTies: ties,
-          totalPointsFor: pf,
-          totalPointsAgainst: pa,
-          seasonsPlayed: 1,
-          bestSeasonWins: wins,
-          bestSeasonYear: league.seasonYear,
-          worstSeasonWins: wins,
-          worstSeasonYear: league.seasonYear,
-        });
-      }
-    }
-
-    // Convert to array and calculate win percentages
-    const leaderboard = Array.from(ownerStatsMap.values()).map(owner => {
-      const totalGames = owner.totalWins + owner.totalLosses + owner.totalTies;
-      const winPercentage = totalGames > 0 ? (owner.totalWins / totalGames) * 100 : 0;
-      const avgPointsPerSeason = owner.seasonsPlayed > 0 ? owner.totalPointsFor / owner.seasonsPlayed : 0;
-
-      return {
-        ...owner,
-        winPercentage,
-        avgPointsPerSeason,
-        totalGames,
-      };
-    });
-
-    // Sort by total wins descending
-    return leaderboard.sort((a, b) => b.totalWins - a.totalWins);
-  } catch (error) {
-    console.error('[LeagueDB] Error getting owner leaderboard:', error);
-    return [];
-  }
 }

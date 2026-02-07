@@ -46,44 +46,11 @@ export const appRouter = router({
         );
       }),
 
-    // Sync all historical seasons
-    syncAllSeasons: protectedProcedure
-      .input(z.object({
-        espnLeagueId: z.string(),
-        espnS2: z.string().optional(),
-        swid: z.string().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        const { syncAllSeasons } = await import('./espnMultiSeasonSync');
-        return await syncAllSeasons(
-          input.espnLeagueId,
-          input.espnS2,
-          input.swid
-        );
-      }),
-
     // Get teams for a league
     teams: protectedProcedure
-      .input(z.object({ 
-        leagueId: z.number(),
-        seasonYear: z.number().optional(),
-        espnLeagueId: z.string().optional(),
-        allTime: z.boolean().optional()
-      }))
+      .input(z.object({ leagueId: z.number() }))
       .query(async ({ input }) => {
-        const { getTeamsByLeague, getTeamsByLeagueAndSeason, getTeamsByEspnLeagueAllTime } = await import('./leagueDb');
-        
-        // All-time mode: aggregate across all seasons
-        if (input.allTime && input.espnLeagueId) {
-          return await getTeamsByEspnLeagueAllTime(input.espnLeagueId);
-        }
-        
-        // Single season mode
-        if (input.seasonYear) {
-          return await getTeamsByLeagueAndSeason(input.leagueId, input.seasonYear);
-        }
-        
-        // Default: all teams for league
+        const { getTeamsByLeague } = await import('./leagueDb');
         return await getTeamsByLeague(input.leagueId);
       }),
 
@@ -117,86 +84,53 @@ export const appRouter = router({
         const { getRecentTransactions } = await import('./leagueDb');
         return await getRecentTransactions(input.leagueId, input.limit);
       }),
+  }),
 
-    // Delete a league
-    delete: protectedProcedure
-      .input(z.object({ leagueId: z.number() }))
-      .mutation(async ({ input }) => {
-        const { deleteLeague } = await import('./leagueDb');
-        return await deleteLeague(input.leagueId);
-      }),
-
-    // Rename a league
-    rename: protectedProcedure
-      .input(z.object({ 
-        leagueId: z.number(),
-        newName: z.string().min(1).max(255)
-      }))
-      .mutation(async ({ input }) => {
-        const { renameLeague } = await import('./leagueDb');
-        return await renameLeague(input.leagueId, input.newName);
-      }),
-
-    // AI-powered data query
-    aiQuery: protectedProcedure
-      .input(z.object({
-        leagueId: z.number(),
-        question: z.string(),
-      }))
-      .mutation(async ({ input }) => {
-        const { answerLeagueQuestion } = await import('./aiQuery');
-        return await answerLeagueQuestion(input.leagueId, input.question);
-      }),
-
-    // Export league stats as markdown (for PDF conversion)
-    exportStats: protectedProcedure
-      .input(z.object({ leagueId: z.number() }))
+  // Trade management
+  trades: router({
+    // Get all trades for a league
+    byLeague: protectedProcedure
+      .input(z.object({ espnLeagueId: z.string() }))
       .query(async ({ input }) => {
-        const { generateLeagueStatsMarkdown } = await import('./pdfExport');
-        return await generateLeagueStatsMarkdown(input.leagueId);
+        const { getTradesWithPlayers } = await import('./tradeDb');
+        return await getTradesWithPlayers(input.espnLeagueId);
       }),
 
-    // Generate AI-powered weekly recap
-    weeklyRecap: protectedProcedure
+    // Get trades for a specific season
+    bySeason: protectedProcedure
       .input(z.object({
-        leagueId: z.number(),
-        week: z.number(),
+        espnLeagueId: z.string(),
         seasonYear: z.number(),
       }))
       .query(async ({ input }) => {
-        const { generateWeeklyRecap } = await import('./weeklyRecap');
-        return await generateWeeklyRecap(input.leagueId, input.week, input.seasonYear);
+        const { getTradesWithPlayers } = await import('./tradeDb');
+        return await getTradesWithPlayers(input.espnLeagueId, input.seasonYear);
       }),
 
-    // Get team history across all seasons
-    teamHistory: protectedProcedure
+    // Analyze a trade with AI
+    analyze: protectedProcedure
       .input(z.object({
-        espnTeamId: z.number(),
-        espnLeagueId: z.string(),
+        tradeId: z.number(),
+        leagueId: z.number(),
+        seasonYear: z.number(),
+        week: z.number(),
+        team1Id: z.number(),
+        team1Name: z.string(),
+        team2Id: z.number(),
+        team2Name: z.string(),
       }))
-      .query(async ({ input }) => {
-        const { getTeamHistory } = await import('./leagueDb');
-        return await getTeamHistory(input.espnTeamId, input.espnLeagueId);
-      }),
-
-    // Get season summaries for all seasons
-    seasonSummaries: protectedProcedure
-      .input(z.object({
-        espnLeagueId: z.string(),
-      }))
-      .query(async ({ input }) => {
-        const { getSeasonSummaries } = await import('./leagueDb');
-        return await getSeasonSummaries(input.espnLeagueId);
-      }),
-
-    // Get owner leaderboard with lifetime stats
-    ownerLeaderboard: protectedProcedure
-      .input(z.object({
-        espnLeagueId: z.string(),
-      }))
-      .query(async ({ input }) => {
-        const { getOwnerLeaderboard } = await import('./leagueDb');
-        return await getOwnerLeaderboard(input.espnLeagueId);
+      .mutation(async ({ input }) => {
+        const { analyzeTradeWithAI } = await import('./tradeAnalysis');
+        return await analyzeTradeWithAI(input.tradeId, {
+          id: input.tradeId,
+          seasonYear: input.seasonYear,
+          week: input.week,
+          team1Id: input.team1Id,
+          team1Name: input.team1Name,
+          team2Id: input.team2Id,
+          team2Name: input.team2Name,
+          leagueId: input.leagueId,
+        });
       }),
   }),
 });

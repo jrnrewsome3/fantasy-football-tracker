@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, Trophy, AlertCircle, CheckCircle2, History } from "lucide-react";
+import { Loader2, Trophy, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -20,9 +19,8 @@ export default function LeagueSetup() {
   const [currentWeek, setCurrentWeek] = useState("1");
   const [espnS2, setEspnS2] = useState("");
   const [swid, setSwid] = useState("");
-  const [syncAllSeasons, setSyncAllSeasons] = useState(true);
 
-  const singleSeasonSync = trpc.league.sync.useMutation({
+  const syncMutation = trpc.league.sync.useMutation({
     onSuccess: (data) => {
       if (data.success) {
         toast.success("League synced successfully!", {
@@ -42,57 +40,20 @@ export default function LeagueSetup() {
     },
   });
 
-  const multiSeasonSync = trpc.league.syncAllSeasons.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Synced ${data.seasonsSynced} season(s)!`, {
-          description: data.message,
-          duration: 5000,
-        });
-        setLocation("/dashboard");
-      } else {
-        toast.error("Multi-season sync failed", {
-          description: data.message,
-        });
-      }
-    },
-    onError: (error) => {
-      toast.error("Multi-season sync failed", {
-        description: error.message,
-      });
-    },
-  });
-
   const handleSync = () => {
-    if (!espnLeagueId) {
-      toast.error("Please enter your ESPN League ID");
+    if (!espnLeagueId || !seasonYear) {
+      toast.error("Please fill in required fields");
       return;
     }
 
-    if (syncAllSeasons) {
-      // Sync all historical seasons
-      multiSeasonSync.mutate({
-        espnLeagueId,
-        espnS2: espnS2 || undefined,
-        swid: swid || undefined,
-      });
-    } else {
-      // Sync single season
-      if (!seasonYear) {
-        toast.error("Please enter a season year");
-        return;
-      }
-      singleSeasonSync.mutate({
-        espnLeagueId,
-        seasonYear: parseInt(seasonYear),
-        currentWeek: parseInt(currentWeek),
-        espnS2: espnS2 || undefined,
-        swid: swid || undefined,
-      });
-    }
+    syncMutation.mutate({
+      espnLeagueId,
+      seasonYear: parseInt(seasonYear),
+      currentWeek: parseInt(currentWeek),
+      espnS2: espnS2 || undefined,
+      swid: swid || undefined,
+    });
   };
-
-  const isLoading = singleSeasonSync.isPending || multiSeasonSync.isPending;
 
   if (authLoading) {
     return (
@@ -143,20 +104,6 @@ export default function LeagueSetup() {
                 </AlertDescription>
               </Alert>
 
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <History className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="font-medium text-foreground">Sync All Historical Seasons</p>
-                    <p className="text-sm text-muted-foreground">Automatically pull all available past seasons for comprehensive stats</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={syncAllSeasons}
-                  onCheckedChange={setSyncAllSeasons}
-                />
-              </div>
-
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="leagueId">ESPN League ID *</Label>
@@ -171,31 +118,29 @@ export default function LeagueSetup() {
                   </p>
                 </div>
 
-                {!syncAllSeasons && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="seasonYear">Season Year *</Label>
-                      <Input
-                        id="seasonYear"
-                        type="number"
-                        placeholder="2026"
-                        value={seasonYear}
-                        onChange={(e) => setSeasonYear(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="currentWeek">Current Week *</Label>
-                      <Input
-                        id="currentWeek"
-                        type="number"
-                        placeholder="1"
-                        value={currentWeek}
-                        onChange={(e) => setCurrentWeek(e.target.value)}
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="seasonYear">Season Year *</Label>
+                    <Input
+                      id="seasonYear"
+                      type="number"
+                      placeholder="2026"
+                      value={seasonYear}
+                      onChange={(e) => setSeasonYear(e.target.value)}
+                    />
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="currentWeek">Current Week *</Label>
+                    <Input
+                      id="currentWeek"
+                      type="number"
+                      placeholder="1"
+                      value={currentWeek}
+                      onChange={(e) => setCurrentWeek(e.target.value)}
+                    />
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="espnS2">ESPN S2 Cookie (for private leagues)</Label>
@@ -222,28 +167,28 @@ export default function LeagueSetup() {
 
               <Button
                 onClick={handleSync}
-                disabled={isLoading}
+                disabled={syncMutation.isPending}
                 className="w-full"
                 size="lg"
               >
-                {isLoading ? (
+                {syncMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {syncAllSeasons ? "Syncing All Seasons..." : "Syncing League Data..."}
+                    Syncing League Data...
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    {syncAllSeasons ? "Sync All Seasons" : "Sync Single Season"}
+                    Sync League
                   </>
                 )}
               </Button>
 
-              {(singleSeasonSync.isSuccess || multiSeasonSync.isSuccess) && (
+              {syncMutation.isSuccess && syncMutation.data.success && (
                 <Alert className="bg-primary/10 border-primary">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
                   <AlertDescription className="text-foreground">
-                    League synced successfully!
+                    {syncMutation.data.message}
                   </AlertDescription>
                 </Alert>
               )}

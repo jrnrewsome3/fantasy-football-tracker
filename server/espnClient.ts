@@ -4,8 +4,7 @@
  */
 
 // @ts-ignore - ESPN library doesn't have TypeScript definitions
-import pkg from 'espn-fantasy-football-api/node-dev.js';
-const { Client } = pkg;
+import { Client } from 'espn-fantasy-football-api/node-dev';
 
 export interface ESPNCredentials {
   leagueId: number;
@@ -67,7 +66,7 @@ export interface ESPNActivity {
 /**
  * Create and configure ESPN API client
  */
-export function createESPNClient(credentials: ESPNCredentials): any {
+export function createESPNClient(credentials: ESPNCredentials): Client {
   const config: any = {
     leagueId: credentials.leagueId,
   };
@@ -84,7 +83,7 @@ export function createESPNClient(credentials: ESPNCredentials): any {
 /**
  * Fetch league information
  */
-export async function fetchLeagueInfo(client: any, seasonId: number) {
+export async function fetchLeagueInfo(client: Client, seasonId: number) {
   try {
     const leagueInfo = await client.getLeagueInfo({ seasonId });
     return leagueInfo;
@@ -97,7 +96,7 @@ export async function fetchLeagueInfo(client: any, seasonId: number) {
 /**
  * Fetch teams for a season
  */
-export async function fetchTeams(client: any, seasonId: number): Promise<ESPNTeam[]> {
+export async function fetchTeams(client: Client, seasonId: number): Promise<ESPNTeam[]> {
   try {
     const teams = await client.getTeamsAtWeek({ seasonId, scoringPeriodId: 1 });
     return teams.map((team: any) => ({
@@ -122,7 +121,7 @@ export async function fetchTeams(client: any, seasonId: number): Promise<ESPNTea
  * Fetch boxscores for a specific week
  */
 export async function fetchBoxScores(
-  client: any,
+  client: Client,
   seasonId: number,
   matchupPeriodId: number,
   scoringPeriodId: number
@@ -180,7 +179,7 @@ export async function fetchBoxScores(
  * Fetch free agents (available players)
  */
 export async function fetchFreeAgents(
-  client: any,
+  client: Client,
   seasonId: number,
   scoringPeriodId: number,
   position?: string
@@ -217,7 +216,7 @@ export async function fetchFreeAgents(
  * Fetch recent league activity
  */
 export async function fetchRecentActivity(
-  client: any,
+  client: Client,
   seasonId: number
 ): Promise<ESPNActivity[]> {
   try {

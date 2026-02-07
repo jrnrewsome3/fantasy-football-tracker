@@ -5,15 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download, Calendar, GitCompare, FileText } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
-import AIQueryBox from "@/components/AIQueryBox";
-import { toast } from "sonner";
 
 export default function LeagueDetail() {
   const { user, loading: authLoading } = useAuth();
@@ -21,119 +17,22 @@ export default function LeagueDetail() {
   const [, params] = useRoute("/league/:id");
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
-  const utils = trpc.useUtils();
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'single' | 'alltime'>('single');
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
 
-  const league = leagues?.find(l => l.id === leagueId);
-
   const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery(
-    { 
-      leagueId, 
-      seasonYear: viewMode === 'single' ? (selectedSeason || league?.seasonYear) : undefined,
-      espnLeagueId: league?.espnLeagueId,
-      allTime: viewMode === 'alltime'
-    },
-    { enabled: !!user && leagueId > 0 && !!league && (viewMode === 'alltime' || !!selectedSeason || !!league?.seasonYear) }
+    { leagueId },
+    { enabled: !!user && leagueId > 0 }
   );
-
-  // Get unique seasons from all leagues with same ESPN ID
-  const availableSeasons = leagues
-    ? Array.from(new Set(
-        leagues
-          .filter(l => l.espnLeagueId === league?.espnLeagueId)
-          .map(l => l.seasonYear)
-      )).sort((a, b) => b - a)
-    : [];
-
-  // Set default season to current league's season
-  useEffect(() => {
-    if (league && selectedSeason === null) {
-      setSelectedSeason(league.seasonYear);
-    }
-  }, [league, selectedSeason]);
-
-  // Update league ID when season changes
-  useEffect(() => {
-    if (selectedSeason && leagues && league) {
-      const seasonLeague = leagues.find(
-        l => l.espnLeagueId === league.espnLeagueId && l.seasonYear === selectedSeason
-      );
-      if (seasonLeague && seasonLeague.id !== leagueId) {
-        setLocation(`/league/${seasonLeague.id}`);
-      }
-    }
-  }, [selectedSeason, leagues, league, leagueId, setLocation]);
 
   const { data: transactions, isLoading: transactionsLoading } = trpc.league.transactions.useQuery(
     { leagueId, limit: 20 },
     { enabled: !!user && leagueId > 0 }
   );
 
-  const syncMutation = trpc.league.sync.useMutation({
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("League data synced successfully!");
-        // Invalidate queries to refresh data
-        utils.league.teams.invalidate({ leagueId });
-        utils.league.matchups.invalidate();
-        utils.league.allMatchups.invalidate({ leagueId });
-        utils.league.transactions.invalidate({ leagueId });
-      } else {
-        toast.error("Failed to sync league data");
-      }
-    },
-    onError: (error) => {
-      toast.error("Error syncing league data: " + error.message);
-    },
-  });
-
-  const handleSync = () => {
-    if (!league) return;
-    syncMutation.mutate({
-      espnLeagueId: league.espnLeagueId,
-      seasonYear: league.seasonYear,
-      espnS2: league.espnS2 || undefined,
-      swid: league.swid || undefined,
-    });
-  };
-
-  const { data: exportData, refetch: refetchExport } = trpc.league.exportStats.useQuery(
-    { leagueId },
-    { enabled: false }
-  );
-
-  const handleExportPDF = async () => {
-    if (!league) return;
-    try {
-      toast.info("Generating PDF report...");
-      const result = await refetchExport();
-      
-      if (!result.data?.success || !result.data?.markdown) {
-        toast.error(result.data?.error || "Failed to generate report");
-        return;
-      }
-
-      // Create markdown file
-      const blob = new Blob([result.data.markdown], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${league.name.replace(/[^a-z0-9]/gi, '_')}_stats_${new Date().toISOString().split('T')[0]}.md`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success("Report downloaded! Convert to PDF using any Markdown to PDF tool.");
-    } catch (error: any) {
-      toast.error("Error generating report: " + error.message);
-    }
-  };
+  const league = leagues?.find(l => l.id === leagueId);
 
   if (authLoading) {
     return (
@@ -202,76 +101,14 @@ export default function LeagueDetail() {
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">{league.name}</h1>
                 <p className="text-sm text-muted-foreground">
-                  Viewing Data from <span className="font-semibold text-primary">{availableSeasons[availableSeasons.length - 1] || 2018}</span> to <span className="font-semibold text-primary">{availableSeasons[0] || new Date().getFullYear()}</span> • Week {league.currentWeek} of {league.totalWeeks}
+                  {league.seasonYear} Season • Week {league.currentWeek} of {league.totalWeeks}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {availableSeasons.length > 1 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Season:</span>
-                  <Select
-                    value={selectedSeason?.toString() || league.seasonYear.toString()}
-                    onValueChange={(value) => setSelectedSeason(parseInt(value))}
-                  >
-                    <SelectTrigger className="w-[120px] h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSeasons.map((season) => (
-                        <SelectItem key={season} value={season.toString()}>
-                          {season}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setLocation(`/league/${leagueId}/recap`)}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Weekly Recap
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setLocation(`/league/${leagueId}/compare`)}
-              >
-                <GitCompare className="mr-2 h-4 w-4" />
-                Compare Teams
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setLocation(`/league/${leagueId}/highlights`)}
-              >
-                <Trophy className="mr-2 h-4 w-4" />
-                Highlights
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportPDF}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export PDF
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleSync}
-                disabled={syncMutation.isPending}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                {syncMutation.isPending ? 'Syncing...' : 'Sync Data'}
-              </Button>
-              </div>
-            </div>
+            <Button variant="outline" size="sm">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Sync Data
+            </Button>
           </div>
         </div>
       </div>
@@ -281,21 +118,13 @@ export default function LeagueDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {viewMode === 'alltime' ? 'Total Teams (All-Time)' : `Total Teams (${selectedSeason || league.seasonYear})`}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-card-foreground">
                 {teamsLoading ? <Skeleton className="h-8 w-12" /> : teams?.length || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {viewMode === 'alltime' 
-                  ? 'Unique teams across all seasons'
-                  : `Teams in ${selectedSeason || league.seasonYear} season`
-                }
-              </p>
             </CardContent>
           </Card>
 
@@ -326,79 +155,18 @@ export default function LeagueDetail() {
 
         {/* Tabs */}
         <Tabs defaultValue="standings" className="space-y-4">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="w-full sm:w-auto inline-flex min-w-max">
-              <TabsTrigger value="standings" className="text-xs sm:text-sm px-3 sm:px-4">Standings</TabsTrigger>
-              <TabsTrigger value="matchups" className="text-xs sm:text-sm px-3 sm:px-4">Matchups</TabsTrigger>
-              <TabsTrigger value="alltime" className="text-xs sm:text-sm px-3 sm:px-4">All-Time Stats</TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs sm:text-sm px-3 sm:px-4">AI Assistant</TabsTrigger>
-              <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-4">Activity</TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList>
+            <TabsTrigger value="standings">Standings</TabsTrigger>
+            <TabsTrigger value="matchups">Matchups</TabsTrigger>
+            <TabsTrigger value="alltime">All-Time Stats</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="standings" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                      <CardTitle>
-                        {viewMode === 'single' 
-                          ? `League Standings - ${selectedSeason || league?.seasonYear} Season`
-                          : `All-Time Career Standings (Since ${availableSeasons[availableSeasons.length - 1] || 2018})`
-                        }
-                      </CardTitle>
-                      <CardDescription>
-                        {viewMode === 'single'
-                          ? `Season standings showing ${sortedTeams.length} teams that competed in ${selectedSeason || league?.seasonYear}`
-                          : `Career totals across all seasons showing ${sortedTeams.length} unique teams`
-                        }
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                        <Button
-                          variant={viewMode === 'single' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('single')}
-                          className="text-xs"
-                        >
-                          Single Season
-                        </Button>
-                        <Button
-                          variant={viewMode === 'alltime' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('alltime')}
-                          className="text-xs"
-                        >
-                          All-Time
-                        </Button>
-                      </div>
-                      {/* Season Selector (only for single season mode) */}
-                      {viewMode === 'single' && availableSeasons.length > 1 && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <Select
-                            value={selectedSeason?.toString() || ''}
-                            onValueChange={(value) => setSelectedSeason(parseInt(value))}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue placeholder="Select season" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableSeasons.map((season) => (
-                                <SelectItem key={season} value={season.toString()}>
-                                  {season} Season
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <CardTitle>League Standings</CardTitle>
+                <CardDescription>Current season standings and team statistics</CardDescription>
               </CardHeader>
               <CardContent>
                 {teamsLoading ? (
@@ -408,53 +176,45 @@ export default function LeagueDetail() {
                     ))}
                   </div>
                 ) : sortedTeams.length > 0 ? (
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-8 sm:w-12 text-xs sm:text-sm">#</TableHead>
-                          <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">Team</TableHead>
-                          <TableHead className="text-xs sm:text-sm hidden lg:table-cell">ESPN ID</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm">W</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm">L</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm hidden sm:table-cell">T</TableHead>
-                          <TableHead className="text-right text-xs sm:text-sm">PF</TableHead>
-                          <TableHead className="text-right text-xs sm:text-sm hidden md:table-cell">PA</TableHead>
-                          <TableHead className="text-right text-xs sm:text-sm hidden md:table-cell">Diff</TableHead>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead className="text-center">W</TableHead>
+                        <TableHead className="text-center">L</TableHead>
+                        <TableHead className="text-center">T</TableHead>
+                        <TableHead className="text-right">PF</TableHead>
+                        <TableHead className="text-right">PA</TableHead>
+                        <TableHead className="text-right">Diff</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedTeams.map((team, index) => (
+                        <TableRow key={team.id} className="cursor-pointer hover:bg-accent/50">
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-semibold text-card-foreground">{team.name}</div>
+                              {team.ownerName && (
+                                <div className="text-sm text-muted-foreground">{team.ownerName}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{team.wins}</TableCell>
+                          <TableCell className="text-center">{team.losses}</TableCell>
+                          <TableCell className="text-center">{team.ties}</TableCell>
+                          <TableCell className="text-right">{(team.pointsFor || 0).toFixed(1)}</TableCell>
+                          <TableCell className="text-right">{(team.pointsAgainst || 0).toFixed(1)}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={(team.pointsFor || 0) - (team.pointsAgainst || 0) > 0 ? "text-green-500" : "text-red-500"}>
+                              {((team.pointsFor || 0) - (team.pointsAgainst || 0)).toFixed(1)}
+                            </span>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedTeams.map((team, index) => (
-                          <TableRow 
-                            key={team.id} 
-                            className="cursor-pointer hover:bg-accent/50"
-                            onClick={() => setLocation(`/team/${team.espnTeamId}/${league.espnLeagueId}/history`)}
-                          >
-                            <TableCell className="font-medium text-xs sm:text-sm">{index + 1}</TableCell>
-                            <TableCell className="min-w-[140px] sm:min-w-0">
-                              <div>
-                                <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">{team.name}</div>
-                                {team.ownerName && (
-                                  <div className="text-xs text-muted-foreground line-clamp-1">{team.ownerName}</div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">{team.espnTeamId}</TableCell>
-                            <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.wins || 0}</TableCell>
-                            <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.losses || 0}</TableCell>
-                            <TableCell className="text-center text-xs sm:text-sm hidden sm:table-cell">{team.ties || 0}</TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm">{(team.pointsFor || 0).toFixed(1)}</TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">{(team.pointsAgainst || 0).toFixed(1)}</TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm hidden md:table-cell">
-                              <span className={(team.pointsFor || 0) - (team.pointsAgainst || 0) >= 0 ? "text-primary" : "text-destructive"}>
-                                {((team.pointsFor || 0) - (team.pointsAgainst || 0)).toFixed(1)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No teams found. Sync your league data to see standings.
@@ -474,10 +234,6 @@ export default function LeagueDetail() {
 
           <TabsContent value="alltime" className="space-y-4">
             <AllTimeStats leagueId={leagueId} />
-          </TabsContent>
-
-          <TabsContent value="ai" className="space-y-4">
-            <AIQueryBox leagueId={leagueId} />
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-4">

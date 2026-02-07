@@ -6,16 +6,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import LeagueDetail from "./pages/LeagueDetail";
 import LeagueSetup from "./pages/LeagueSetup";
-import HistoricalHighlights from "./pages/HistoricalHighlights";
-import FAQ from "./pages/FAQ";
-import TeamComparison from "./pages/TeamComparison";
-import WeeklyRecap from "./pages/WeeklyRecap";
-import TeamHistory from "./pages/TeamHistory";
-import BrowseSeasons from "./pages/BrowseSeasons";
-import OwnerLeaderboard from "./pages/OwnerLeaderboard";
-import OnboardingTutorial from "./components/OnboardingTutorial";
+import LeagueDetail from "./pages/LeagueDetail";
+import TradeHistory from "./pages/TradeHistory";
 
 function Router() {
   return (
@@ -23,14 +16,8 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/setup" component={LeagueSetup} />
-      <Route path="/faq" component={FAQ} />
-      <Route path={"/league/:id"} component={LeagueDetail} />
-      <Route path={"/league/:id/highlights"} component={HistoricalHighlights} />
-      <Route path={"/league/:id/compare"} component={TeamComparison} />
-      <Route path={"/league/:id/recap"} component={WeeklyRecap} />
-      <Route path={"/team/:espnTeamId/:espnLeagueId/history"} component={TeamHistory} />
-      <Route path={"/seasons/:espnLeagueId"} component={BrowseSeasons} />
-      <Route path={"/leaderboard/:espnLeagueId"} component={OwnerLeaderboard} />
+      <Route path="/league/:id" component={LeagueDetail} />
+      <Route path="/trades/:espnLeagueId" component={TradeHistory} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -44,7 +31,6 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <OnboardingTutorial />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

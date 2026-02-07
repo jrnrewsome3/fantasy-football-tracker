@@ -3,75 +3,17 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle, Trash2, Pencil } from "lucide-react";
+import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, ArrowRightLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
-import { useRestartTutorial } from "@/components/OnboardingTutorial";
-import { toast } from "sonner";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const restartTutorial = useRestartTutorial();
-  const utils = trpc.useUtils();
 
   const { data: leagues, isLoading: leaguesLoading } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
-
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [selectedLeague, setSelectedLeague] = useState<{ id: number; name: string } | null>(null);
-  const [newName, setNewName] = useState("");
-
-  const deleteMutation = trpc.league.delete.useMutation({
-    onSuccess: () => {
-      toast.success("League deleted successfully");
-      utils.league.list.invalidate();
-    },
-    onError: (error) => {
-      toast.error("Failed to delete league", {
-        description: error.message,
-      });
-    },
-  });
-
-  const renameMutation = trpc.league.rename.useMutation({
-    onSuccess: () => {
-      toast.success("League renamed successfully");
-      utils.league.list.invalidate();
-      setRenameDialogOpen(false);
-      setSelectedLeague(null);
-      setNewName("");
-    },
-    onError: (error) => {
-      toast.error("Failed to rename league", {
-        description: error.message,
-      });
-    },
-  });
-
-  const handleDelete = (e: React.MouseEvent, leagueId: number, leagueName: string) => {
-    e.stopPropagation();
-    if (confirm(`Are you sure you want to delete "${leagueName}"? This will remove all associated data.`)) {
-      deleteMutation.mutate({ leagueId });
-    }
-  };
-
-  const handleRenameClick = (e: React.MouseEvent, league: { id: number; name: string }) => {
-    e.stopPropagation();
-    setSelectedLeague(league);
-    setNewName(league.name);
-    setRenameDialogOpen(true);
-  };
-
-  const handleRenameSubmit = () => {
-    if (selectedLeague && newName.trim()) {
-      renameMutation.mutate({ leagueId: selectedLeague.id, newName: newName.trim() });
-    }
-  };
 
   if (authLoading) {
     return (
@@ -108,23 +50,14 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <Trophy className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-card-foreground">Trouble in Paradise</h1>
+                <h1 className="text-2xl font-bold text-card-foreground">Fantasy Football Tracker</h1>
                 <p className="text-sm text-muted-foreground">Welcome back, {user.name}</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setLocation("/faq")} size="sm">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                Help & FAQ
-              </Button>
-              <Button variant="outline" onClick={restartTutorial} size="sm">
-                Tutorial
-              </Button>
-              <Button onClick={() => setLocation("/setup")} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add League
-              </Button>
-            </div>
+            <Button onClick={() => setLocation("/setup")} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add League
+            </Button>
           </div>
         </div>
       </div>
@@ -213,11 +146,9 @@ export default function Dashboard() {
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-card-foreground">
-                          {league.name === `League ${league.espnLeagueId}` ? `ESPN League ${league.espnLeagueId}` : league.name}
-                        </h3>
+                        <h3 className="font-semibold text-card-foreground">{league.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {league.seasonYear} Season • Week {league.currentWeek || 1}
+                          {league.seasonYear} Season • Week {league.currentWeek}
                         </p>
                       </div>
                     </div>
@@ -227,36 +158,11 @@ export default function Dashboard() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setLocation(`/leaderboard/${league.espnLeagueId}`);
+                          setLocation(`/trades/${league.espnLeagueId}`);
                         }}
                       >
-                        Leaderboard
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLocation(`/seasons/${league.espnLeagueId}`);
-                        }}
-                      >
-                        Browse Seasons
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleRenameClick(e, { id: league.id, name: league.name })}
-                        disabled={renameMutation.isPending}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleDelete(e, league.id, league.name)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        Trades
                       </Button>
                       <Button variant="ghost" size="sm">
                         View League →
@@ -281,48 +187,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Rename Dialog */}
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename League</DialogTitle>
-            <DialogDescription>
-              Give your league a custom name to help identify it.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Enter league name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleRenameSubmit();
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRenameSubmit}
-              disabled={!newName.trim() || renameMutation.isPending}
-            >
-              {renameMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
