@@ -41,8 +41,8 @@ export default function Home() {
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
-              Track Your Fantasy Football
-              <span className="text-primary block mt-2">League Like Never Before</span>
+              Trouble in Paradise
+              <span className="text-primary block mt-2">Fantasy Football Tracker</span>
             </h1>
             
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -149,7 +149,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-card-foreground">Fantasy Football Tracker</span>
+              <span className="font-semibold text-card-foreground">Trouble in Paradise</span>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2026 All rights reserved

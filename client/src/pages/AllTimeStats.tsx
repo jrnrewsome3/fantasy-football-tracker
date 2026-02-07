@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trophy, TrendingUp, TrendingDown, Award } from "lucide-react";
+import HeadToHeadMatrix from "./HeadToHeadMatrix";
 
 interface AllTimeStatsProps {
   leagueId: number;
@@ -186,6 +187,9 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Head-to-Head Matrix */}
+      <HeadToHeadMatrix leagueId={leagueId} />
     </div>
   );
 }

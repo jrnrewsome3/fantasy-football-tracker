@@ -52,6 +52,7 @@ export const teams = mysqlTable("teams", {
   id: int("id").autoincrement().primaryKey(),
   leagueId: int("leagueId").notNull(),
   espnTeamId: int("espnTeamId").notNull(),
+  seasonYear: int("seasonYear").notNull(), // Season year for this team instance
   name: text("name").notNull(),
   abbreviation: varchar("abbreviation", { length: 10 }),
   logoUrl: text("logoUrl"),
@@ -171,46 +172,3 @@ export const teamAllTimeStats = mysqlTable("teamAllTimeStats", {
 
 export type TeamAllTimeStat = typeof teamAllTimeStats.$inferSelect;
 export type InsertTeamAllTimeStat = typeof teamAllTimeStats.$inferInsert;
-
-/**
- * Trades between teams
- */
-export const trades = mysqlTable("trades", {
-  id: int("id").autoincrement().primaryKey(),
-  leagueId: int("leagueId").notNull(),
-  espnLeagueId: varchar("espnLeagueId", { length: 64 }).notNull(),
-  seasonYear: int("seasonYear").notNull(),
-  week: int("week"),
-  tradeDate: timestamp("tradeDate").notNull(),
-  team1Id: int("team1Id").notNull(), // First team in trade
-  team1EspnId: int("team1EspnId").notNull(),
-  team1Name: text("team1Name"),
-  team2Id: int("team2Id").notNull(), // Second team in trade
-  team2EspnId: int("team2EspnId").notNull(),
-  team2Name: text("team2Name"),
-  rawData: text("rawData"), // JSON string with full ESPN trade data
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Trade = typeof trades.$inferSelect;
-export type InsertTrade = typeof trades.$inferInsert;
-
-/**
- * Players involved in trades (junction table)
- */
-export const tradePlayers = mysqlTable("tradePlayers", {
-  id: int("id").autoincrement().primaryKey(),
-  tradeId: int("tradeId").notNull(),
-  playerId: int("playerId"), // Link to players table if available
-  espnPlayerId: int("espnPlayerId"),
-  playerName: text("playerName").notNull(),
-  playerPosition: varchar("playerPosition", { length: 10 }),
-  fromTeamId: int("fromTeamId").notNull(), // Team giving up player
-  fromEspnTeamId: int("fromEspnTeamId").notNull(),
-  toTeamId: int("toTeamId").notNull(), // Team receiving player
-  toEspnTeamId: int("toEspnTeamId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type TradePlayer = typeof tradePlayers.$inferSelect;
-export type InsertTradePlayer = typeof tradePlayers.$inferInsert;

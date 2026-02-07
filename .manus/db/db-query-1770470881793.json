@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE teams t \nJOIN leagues l ON t.leagueId = l.id \nSET t.seasonYear = l.seasonYear \nWHERE t.seasonYear IS NULL OR t.seasonYear = 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2sjWbm7jrNuDk9K.e972c4ac4ad3 --database emzkRtjywtDuhFrsc4XYvD --execute UPDATE teams t \nJOIN leagues l ON t.leagueId = l.id \nSET t.seasonYear = l.seasonYear \nWHERE t.seasonYear IS NULL OR t.seasonYear = 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 101
+}

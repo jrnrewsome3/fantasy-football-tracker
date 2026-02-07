@@ -75,6 +75,7 @@ export async function syncLeagueData(
       await upsertTeam({
         leagueId: league.id,
         espnTeamId: espnTeam.id,
+        seasonYear: seasonYear,
         name: espnTeam.name,
         abbreviation: espnTeam.abbreviation,
         logoUrl: espnTeam.logoURL,
@@ -317,11 +318,6 @@ export async function fullLeagueSync(
 
     // Sync activity
     await syncLeagueActivity(espnLeagueId, seasonYear, espnS2, swid);
-
-    // Sync trades
-    const { syncTradesForSeason } = await import('./tradeSync');
-    const tradeResult = await syncTradesForSeason(espnLeagueId, seasonYear, espnS2, swid);
-    console.log(`[ESPN Sync] Trade sync result: ${tradeResult.message}`);
 
     return {
       success: true,

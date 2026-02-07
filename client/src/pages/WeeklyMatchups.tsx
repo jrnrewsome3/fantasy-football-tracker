@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface WeeklyMatchupsProps {
@@ -13,11 +14,16 @@ interface WeeklyMatchupsProps {
 
 export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: WeeklyMatchupsProps) {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedSeason, setSelectedSeason] = useState(seasonYear);
+
+  // Get all matchups to determine available seasons
+  const { data: allMatchups } = trpc.league.allMatchups.useQuery({ leagueId });
+  const availableSeasons = Array.from(new Set((allMatchups || []).map(m => m.seasonYear))).sort((a, b) => b - a);
 
   const { data: matchups, isLoading } = trpc.league.matchups.useQuery({
     leagueId,
     week: selectedWeek,
-    seasonYear,
+    seasonYear: selectedSeason,
   });
 
   const { data: teams } = trpc.league.teams.useQuery({ leagueId });
@@ -32,8 +38,32 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
     return team?.abbreviation || `T${teamId}`;
   };
 
+  const getOwnerName = (teamId: number) => {
+    const team = teams?.find(t => t.espnTeamId === teamId);
+    return team?.ownerName || '';
+  };
+
   return (
     <div className="space-y-4">
+      {/* Season Selector */}
+      {availableSeasons.length > 1 && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-muted-foreground">Historical Data Available</div>
+          <Select value={selectedSeason.toString()} onValueChange={(v) => setSelectedSeason(parseInt(v))}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select season" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableSeasons.map(season => (
+                <SelectItem key={season} value={season.toString()}>
+                  {season} Season {season === seasonYear && '(Current)'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Week Selector */}
       <div className="flex items-center justify-between">
         <Button
@@ -79,24 +109,37 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
             return (
               <Card key={matchup.id} className="overflow-hidden">
                 <CardContent className="p-0">
-                  <div className="grid grid-cols-3 divide-x">
+                  {/* Mobile-optimized layout */}
+                  <div className="flex flex-col sm:grid sm:grid-cols-3 sm:divide-x">
                     {/* Away Team */}
-                    <div className="p-4 flex flex-col justify-center">
-                      <div className="text-sm text-muted-foreground mb-1">{getTeamAbbr(matchup.awayTeamId)}</div>
-                      <div className="font-semibold text-card-foreground">{getTeamName(matchup.awayTeamId)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Proj: {awayProjected.toFixed(1)}
+                    <div className="p-3 sm:p-4 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-start">
+                      <div className="flex flex-col items-start">
+                        <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">{getTeamAbbr(matchup.awayTeamId)}</div>
+                        <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getTeamName(matchup.awayTeamId)}</div>
+                        {getOwnerName(matchup.awayTeamId) && (
+                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getOwnerName(matchup.awayTeamId)}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                          Proj: {awayProjected.toFixed(1)}
+                        </div>
+                      </div>
+                      {/* Score on mobile */}
+                      <div className="sm:hidden flex flex-col items-end">
+                        <div className={`text-2xl font-bold ${awayScore > homeScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
+                          {awayScore.toFixed(1)}
+                        </div>
+                        {isComplete && <div className="text-xs text-primary">W</div>}
                       </div>
                     </div>
 
-                    {/* Score */}
-                    <div className="p-4 flex flex-col items-center justify-center bg-accent/20">
-                      <div className="flex items-center gap-4">
-                        <div className={`text-3xl font-bold ${awayScore > homeScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
+                    {/* Score - Desktop only */}
+                    <div className="hidden sm:flex p-4 flex-col items-center justify-center bg-accent/20">
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className={`text-2xl md:text-3xl font-bold ${awayScore > homeScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
                           {awayScore.toFixed(1)}
                         </div>
                         <div className="text-muted-foreground">-</div>
-                        <div className={`text-3xl font-bold ${homeScore > awayScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
+                        <div className={`text-2xl md:text-3xl font-bold ${homeScore > awayScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
                           {homeScore.toFixed(1)}
                         </div>
                       </div>
@@ -107,14 +150,36 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
                       )}
                     </div>
 
+                    {/* Divider on mobile */}
+                    <div className="sm:hidden border-t border-border my-2"></div>
+
                     {/* Home Team */}
-                    <div className="p-4 flex flex-col justify-center">
-                      <div className="text-sm text-muted-foreground mb-1">{getTeamAbbr(matchup.homeTeamId)}</div>
-                      <div className="font-semibold text-card-foreground">{getTeamName(matchup.homeTeamId)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Proj: {homeProjected.toFixed(1)}
+                    <div className="p-3 sm:p-4 flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-start">
+                      <div className="flex flex-col items-start">
+                        <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">{getTeamAbbr(matchup.homeTeamId)}</div>
+                        <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getTeamName(matchup.homeTeamId)}</div>
+                        {getOwnerName(matchup.homeTeamId) && (
+                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getOwnerName(matchup.homeTeamId)}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                          Proj: {homeProjected.toFixed(1)}
+                        </div>
+                      </div>
+                      {/* Score on mobile */}
+                      <div className="sm:hidden flex flex-col items-end">
+                        <div className={`text-2xl font-bold ${homeScore > awayScore && isComplete ? "text-primary" : "text-card-foreground"}`}>
+                          {homeScore.toFixed(1)}
+                        </div>
+                        {isComplete && <div className="text-xs text-primary">W</div>}
                       </div>
                     </div>
+
+                    {/* Status indicator on mobile */}
+                    {isComplete && (
+                      <div className="sm:hidden px-3 pb-3 text-center">
+                        <div className="text-xs text-muted-foreground">Final</div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
