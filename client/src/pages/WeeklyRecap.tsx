@@ -89,9 +89,9 @@ export default function WeeklyRecap() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-card-foreground">Weekly Recap</h1>
+              <h1 className="text-3xl font-bold text-card-foreground">Weekly Recap - {league.seasonYear} Season</h1>
               <p className="text-muted-foreground mt-1">
-                AI-generated highlights and analysis for {league.name}
+                AI-generated highlights and analysis for {league.name} • Week {selectedWeek} of {league.seasonYear}
               </p>
             </div>
           </div>
@@ -159,8 +159,11 @@ export default function WeeklyRecap() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
-                    Week {recap.week} Highlights
+                    Week {recap.week} Highlights ({league.seasonYear} Season)
                   </CardTitle>
+                  <CardDescription>
+                    Key moments from Week {recap.week} of the {league.seasonYear} season
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-lg text-card-foreground leading-relaxed">
@@ -177,7 +180,7 @@ export default function WeeklyRecap() {
                       <Zap className="h-5 w-5 text-yellow-500" />
                       Top Performers
                     </CardTitle>
-                    <CardDescription>Highest scoring teams this week</CardDescription>
+                    <CardDescription>Highest scoring teams in Week {recap.week} of {league.seasonYear}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -213,7 +216,7 @@ export default function WeeklyRecap() {
                       <TrendingUp className="h-5 w-5 text-orange-500" />
                       Biggest Upsets
                     </CardTitle>
-                    <CardDescription>Unexpected victories this week</CardDescription>
+                    <CardDescription>Unexpected victories in Week {recap.week} of {league.seasonYear}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -247,7 +250,7 @@ export default function WeeklyRecap() {
                         <Target className="h-5 w-5 text-blue-500" />
                         Closest Games
                       </CardTitle>
-                      <CardDescription>Nail-biting finishes</CardDescription>
+                      <CardDescription>Nail-biting finishes from Week {recap.week}, {league.seasonYear}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
@@ -278,7 +281,7 @@ export default function WeeklyRecap() {
                         <TrendingUp className="h-5 w-5 text-purple-500" />
                         Biggest Blowouts
                       </CardTitle>
-                      <CardDescription>Dominant performances</CardDescription>
+                      <CardDescription>Dominant performances from Week {recap.week}, {league.seasonYear}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
@@ -307,7 +310,7 @@ export default function WeeklyRecap() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Key Storylines</CardTitle>
-                    <CardDescription>Notable moments from the week</CardDescription>
+                    <CardDescription>Notable moments from Week {recap.week} of the {league.seasonYear} season</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-3">

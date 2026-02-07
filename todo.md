@@ -207,3 +207,11 @@
 - [x] Update stats cards to show season-specific team counts
 - [x] Ensure team statistics (W/L/T/PF/PA) match the selected season
 - [x] Write and pass vitest tests for season-filtered teams query
+
+## Weekly Recap Page Year Clarity
+- [x] Add season year to Weekly Recap page header/title
+- [x] Display "Week X of [YEAR] Season" prominently
+- [x] Show which league/season the recap is for
+- [x] Add year context to all sections (highlights, top performers, upsets)
+- [x] Update all section descriptions to include week and year
+- [x] Make it immediately obvious what year's data is being displayed
