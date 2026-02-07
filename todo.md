@@ -281,3 +281,14 @@
 - [x] Add gradient background with border shadow for prominence
 - [x] Separate strategic planning questions from stats questions
 - [x] Add emoji indicators for question categories
+
+## Team History Interactive Charts
+- [x] Install Recharts library for interactive chart visualization
+- [x] Create scoring trends line chart showing points scored per season
+- [x] Create win/loss pattern bar chart showing W-L-T record per season
+- [x] Add Points For and Points Against dual-line chart
+- [x] Integrate charts into TeamHistory page in 2-column grid
+- [x] Make charts responsive and interactive with tooltips
+- [x] Add chart legends and axis labels
+- [x] Style charts to match dark theme with proper colors
+- [x] Add icons to chart card headers for visual clarity

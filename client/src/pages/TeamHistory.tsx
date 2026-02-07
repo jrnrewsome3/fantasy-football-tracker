@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Trophy, TrendingUp, Target } from "lucide-react";
+import { ArrowLeft, Trophy, TrendingUp, Target, BarChart3, LineChart } from "lucide-react";
+import { LineChart as RechartsLine, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 
@@ -176,6 +177,115 @@ export default function TeamHistory() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Career differential
                 </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Interactive Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Scoring Trends Chart */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <LineChart className="h-5 w-5 text-primary" />
+                  <CardTitle>Scoring Trends</CardTitle>
+                </div>
+                <CardDescription>
+                  Points scored and allowed per season
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsLine
+                    data={history.map(s => ({
+                      season: s.seasonYear,
+                      "Points For": s.pointsFor || 0,
+                      "Points Against": s.pointsAgainst || 0,
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="season" 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="Points For" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(var(--primary))' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="Points Against" 
+                      stroke="hsl(var(--destructive))" 
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(var(--destructive))' }}
+                    />
+                  </RechartsLine>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Win/Loss Pattern Chart */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <CardTitle>Win/Loss Patterns</CardTitle>
+                </div>
+                <CardDescription>
+                  Season record breakdown
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={history.map(s => ({
+                      season: s.seasonYear,
+                      Wins: s.wins || 0,
+                      Losses: s.losses || 0,
+                      Ties: s.ties || 0,
+                    }))}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="season" 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="Wins" fill="hsl(var(--primary))" />
+                    <Bar dataKey="Losses" fill="hsl(var(--destructive))" />
+                    <Bar dataKey="Ties" fill="hsl(var(--muted))" />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
