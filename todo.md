@@ -326,3 +326,12 @@
 - [x] Hide less critical columns on mobile (T, PA, Diff)
 - [x] Reduce font sizes in table cells for mobile
 - [x] Add min-width constraints to prevent column collapse
+
+## Add Owner Names to Team Displays
+- [x] Show owner names in matchup cards alongside team names
+- [x] Add getOwnerName helper function to WeeklyMatchups component
+- [x] Display owner names below team names in matchup cards
+- [x] Add proper text truncation for owner names on mobile (line-clamp-1)
+- [x] Ensure owner names are visible on mobile without causing overflow
+- [x] Owner names already visible in standings table (desktop)
+- [x] Weekly recap uses team names from backend (already includes proper names)

@@ -38,6 +38,11 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
     return team?.abbreviation || `T${teamId}`;
   };
 
+  const getOwnerName = (teamId: number) => {
+    const team = teams?.find(t => t.espnTeamId === teamId);
+    return team?.ownerName || '';
+  };
+
   return (
     <div className="space-y-4">
       {/* Season Selector */}
@@ -111,6 +116,9 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
                       <div className="flex flex-col items-start">
                         <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">{getTeamAbbr(matchup.awayTeamId)}</div>
                         <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getTeamName(matchup.awayTeamId)}</div>
+                        {getOwnerName(matchup.awayTeamId) && (
+                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getOwnerName(matchup.awayTeamId)}</div>
+                        )}
                         <div className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
                           Proj: {awayProjected.toFixed(1)}
                         </div>
@@ -150,6 +158,9 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
                       <div className="flex flex-col items-start">
                         <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">{getTeamAbbr(matchup.homeTeamId)}</div>
                         <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getTeamName(matchup.homeTeamId)}</div>
+                        {getOwnerName(matchup.homeTeamId) && (
+                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">{getOwnerName(matchup.homeTeamId)}</div>
+                        )}
                         <div className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
                           Proj: {homeProjected.toFixed(1)}
                         </div>
