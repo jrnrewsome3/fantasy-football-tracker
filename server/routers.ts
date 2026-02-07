@@ -119,6 +119,14 @@ export const appRouter = router({
         const { answerLeagueQuestion } = await import('./aiQuery');
         return await answerLeagueQuestion(input.leagueId, input.question);
       }),
+
+    // Export league stats as markdown (for PDF conversion)
+    exportStats: protectedProcedure
+      .input(z.object({ leagueId: z.number() }))
+      .query(async ({ input }) => {
+        const { generateLeagueStatsMarkdown } = await import('./pdfExport');
+        return await generateLeagueStatsMarkdown(input.leagueId);
+      }),
   }),
 });
 

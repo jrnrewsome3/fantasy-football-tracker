@@ -151,3 +151,9 @@
 - [x] Build Historical Highlights page with season/player/matchup filters
 - [x] Add visual data illustrations to Historical Highlights
 - [x] Add season filter dropdown to matchup viewer for browsing historical data
+
+## Export & Sharing Features
+- [x] Build PDF export for league stats and standings
+- [x] Add social media sharing for Historical Highlights
+- [x] Create shareable text generation for highlight cards
+- [x] Add download buttons to league detail and highlights pages

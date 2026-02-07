@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw } from "lucide-react";
+import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
@@ -61,6 +61,39 @@ export default function LeagueDetail() {
       espnS2: league.espnS2 || undefined,
       swid: league.swid || undefined,
     });
+  };
+
+  const { data: exportData, refetch: refetchExport } = trpc.league.exportStats.useQuery(
+    { leagueId },
+    { enabled: false }
+  );
+
+  const handleExportPDF = async () => {
+    if (!league) return;
+    try {
+      toast.info("Generating PDF report...");
+      const result = await refetchExport();
+      
+      if (!result.data?.success || !result.data?.markdown) {
+        toast.error(result.data?.error || "Failed to generate report");
+        return;
+      }
+
+      // Create markdown file
+      const blob = new Blob([result.data.markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${league.name.replace(/[^a-z0-9]/gi, '_')}_stats_${new Date().toISOString().split('T')[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Report downloaded! Convert to PDF using any Markdown to PDF tool.");
+    } catch (error: any) {
+      toast.error("Error generating report: " + error.message);
+    }
   };
 
   const league = leagues?.find(l => l.id === leagueId);
@@ -144,6 +177,14 @@ export default function LeagueDetail() {
               >
                 <Trophy className="mr-2 h-4 w-4" />
                 Highlights
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportPDF}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
               </Button>
               <Button 
                 variant="outline" 

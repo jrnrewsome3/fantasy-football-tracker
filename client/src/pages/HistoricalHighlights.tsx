@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, TrendingUp, TrendingDown, Zap, Target, Award, ArrowLeft } from "lucide-react";
+import { Trophy, TrendingUp, TrendingDown, Zap, Target, Award, ArrowLeft, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
 
 export default function HistoricalHighlights() {
@@ -15,6 +16,32 @@ export default function HistoricalHighlights() {
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const [selectedSeason, setSelectedSeason] = useState<string>("all");
+
+  const shareHighlight = (title: string, description: string) => {
+    const text = `${title}\n\n${description}\n\nFrom Trouble in Paradise Fantasy Football Tracker`;
+    
+    if (navigator.share) {
+      // Use native share API if available (mobile)
+      navigator.share({
+        title: title,
+        text: text,
+      }).catch(() => {
+        // Fallback to clipboard
+        copyToClipboard(text);
+      });
+    } else {
+      // Fallback to clipboard
+      copyToClipboard(text);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Copied to clipboard! Paste to share on social media.");
+    }).catch(() => {
+      toast.error("Failed to copy to clipboard");
+    });
+  };
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -189,9 +216,23 @@ export default function HistoricalHighlights() {
             {/* Highest Scoring Game */}
             <Card className="border-green-500/20 bg-gradient-to-br from-green-500/5 to-green-500/10">
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-green-500" />
-                  <CardTitle className="text-lg">Highest Scoring Game</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-green-500" />
+                    <CardTitle className="text-lg">Highest Scoring Game</CardTitle>
+                  </div>
+                  {highlights.highestScoringGame && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareHighlight(
+                        "🔥 Highest Scoring Game!",
+                        `${getTeamName(highlights.highestScoringGame!.homeTeamId)} ${highlights.highestScoringGame!.homeScore} vs ${getTeamName(highlights.highestScoringGame!.awayTeamId)} ${highlights.highestScoringGame!.awayScore}\n${((highlights.highestScoringGame!.homeScore || 0) + (highlights.highestScoringGame!.awayScore || 0)).toFixed(1)} total points!\nWeek ${highlights.highestScoringGame!.week}, ${highlights.highestScoringGame!.seasonYear}`
+                      )}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -219,9 +260,23 @@ export default function HistoricalHighlights() {
             {/* Biggest Blowout */}
             <Card className="border-red-500/20 bg-gradient-to-br from-red-500/5 to-red-500/10">
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-red-500" />
-                  <CardTitle className="text-lg">Biggest Blowout</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="h-5 w-5 text-red-500" />
+                    <CardTitle className="text-lg">Biggest Blowout</CardTitle>
+                  </div>
+                  {highlights.biggestBlowout && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareHighlight(
+                        "💥 Biggest Blowout!",
+                        `${getTeamName(highlights.biggestBlowout!.homeTeamId)} ${highlights.biggestBlowout!.homeScore} vs ${getTeamName(highlights.biggestBlowout!.awayTeamId)} ${highlights.biggestBlowout!.awayScore}\n${Math.abs((highlights.biggestBlowout!.homeScore || 0) - (highlights.biggestBlowout!.awayScore || 0)).toFixed(1)} point margin!\nWeek ${highlights.biggestBlowout!.week}, ${highlights.biggestBlowout!.seasonYear}`
+                      )}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
