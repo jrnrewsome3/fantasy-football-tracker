@@ -10,6 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
+import { toast } from "sonner";
 
 export default function LeagueDetail() {
   const { user, loading: authLoading } = useAuth();
@@ -17,6 +18,7 @@ export default function LeagueDetail() {
   const [, params] = useRoute("/league/:id");
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
+  const utils = trpc.useUtils();
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -31,6 +33,34 @@ export default function LeagueDetail() {
     { leagueId, limit: 20 },
     { enabled: !!user && leagueId > 0 }
   );
+
+  const syncMutation = trpc.league.sync.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success("League data synced successfully!");
+        // Invalidate queries to refresh data
+        utils.league.teams.invalidate({ leagueId });
+        utils.league.matchups.invalidate();
+        utils.league.allMatchups.invalidate({ leagueId });
+        utils.league.transactions.invalidate({ leagueId });
+      } else {
+        toast.error("Failed to sync league data");
+      }
+    },
+    onError: (error) => {
+      toast.error("Error syncing league data: " + error.message);
+    },
+  });
+
+  const handleSync = () => {
+    if (!league) return;
+    syncMutation.mutate({
+      espnLeagueId: league.espnLeagueId,
+      seasonYear: league.seasonYear,
+      espnS2: league.espnS2 || undefined,
+      swid: league.swid || undefined,
+    });
+  };
 
   const league = leagues?.find(l => l.id === leagueId);
 
@@ -105,9 +135,14 @@ export default function LeagueDetail() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Sync Data
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSync}
+              disabled={syncMutation.isPending}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncMutation.isPending ? 'Syncing...' : 'Sync Data'}
             </Button>
           </div>
         </div>
