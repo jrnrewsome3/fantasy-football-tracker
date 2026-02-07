@@ -84,12 +84,22 @@ export async function generateWeeklyRecap(
     };
   });
 
-  // Find top performers
+  // Find top performers (deduplicate by team name, keep highest score)
   const allScores = matchupData.flatMap(m => [
     { team: m.homeTeam, score: m.homeScore },
     { team: m.awayTeam, score: m.awayScore },
   ]);
-  const topPerformers = allScores
+  
+  // Deduplicate: keep only the highest score for each unique team
+  const teamScoreMap = new Map<string, number>();
+  allScores.forEach(({ team, score }) => {
+    if (!teamScoreMap.has(team) || teamScoreMap.get(team)! < score) {
+      teamScoreMap.set(team, score);
+    }
+  });
+  
+  const topPerformers = Array.from(teamScoreMap.entries())
+    .map(([team, score]) => ({ team, score }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 

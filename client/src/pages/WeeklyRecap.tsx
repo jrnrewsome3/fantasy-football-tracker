@@ -16,18 +16,30 @@ export default function WeeklyRecap() {
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
 
   const league = leagues?.find(l => l.id === leagueId);
+  
+  // Get all available seasons for this league
+  const { data: seasonSummaries } = trpc.league.seasonSummaries.useQuery(
+    { espnLeagueId: league?.espnLeagueId || "" },
+    { enabled: !!user && !!league?.espnLeagueId }
+  );
+  
+  const availableSeasons = seasonSummaries?.map(s => s.league.seasonYear).sort((a, b) => b - a) || [];
+  
+  // Set default season to the current league's season if not selected
+  const effectiveSeason = selectedSeason || league?.seasonYear || new Date().getFullYear();
 
   const { data: recap, isLoading: recapLoading } = trpc.league.weeklyRecap.useQuery(
     {
       leagueId,
       week: selectedWeek,
-      seasonYear: league?.seasonYear || new Date().getFullYear(),
+      seasonYear: effectiveSeason,
     },
     { enabled: !!user && leagueId > 0 && !!league }
   );
@@ -89,11 +101,34 @@ export default function WeeklyRecap() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-card-foreground">Weekly Recap - {league.seasonYear} Season</h1>
+              <h1 className="text-3xl font-bold text-card-foreground">Weekly Recap - {effectiveSeason} Season</h1>
               <p className="text-muted-foreground mt-1">
-                AI-generated highlights and analysis for {league.name} • Week {selectedWeek} of {league.seasonYear}
+                AI-generated highlights and analysis for {league.name} • Week {selectedWeek} of {effectiveSeason}
               </p>
             </div>
+            {availableSeasons.length > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Season:</span>
+                <Select
+                  value={effectiveSeason.toString()}
+                  onValueChange={(value) => {
+                    setSelectedSeason(parseInt(value));
+                    setSelectedWeek(1); // Reset to week 1 when changing seasons
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSeasons.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year} Season
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {/* Week Navigation */}

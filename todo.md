@@ -238,3 +238,25 @@
 - [x] Sort seasons by year (newest first)
 - [x] Add archive summary card with total stats
 - [x] Write vitest tests for seasons summary query
+
+## Weekly Recap Duplicate Data Issue
+- [x] Fix duplicate top performers (all showing same team)
+- [x] Implement team deduplication logic keeping highest score
+- [x] Fix duplicate biggest upsets (all showing same matchup)
+- [x] Fix duplicate closest games (all showing same game)
+- [x] Fix duplicate biggest blowouts (all showing same game)
+- [x] Add season selector dropdown to Weekly Recap page
+- [x] Allow users to view recaps for any available season
+- [x] Ensure recap data is filtered by selected season
+- [x] Update header to show effective season year
+- [x] Reset week to 1 when changing seasons
+- [x] Write and pass vitest tests for deduplication logic
+- [x] Test that each section shows unique, accurate data
+
+## League Deletion Persistence Issue (PAUSED)
+- [ ] Investigate why deleted leagues reappear on dashboard
+- [ ] Check database for duplicate league entries
+- [ ] Identify code that recreates leagues after deletion
+- [ ] Fix the root cause of league recreation
+- [ ] Ensure delete operation properly removes leagues from database
+- [ ] Test that deleted leagues stay deleted after page refresh
