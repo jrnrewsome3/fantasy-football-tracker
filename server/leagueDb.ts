@@ -156,12 +156,40 @@ export async function getTeamsByLeagueAndSeason(leagueId: number, seasonYear: nu
   const db = await getDb();
   if (!db) return [];
 
-  return await db.select().from(teams)
+  // Get all teams for this league and season
+  const allTeams = await db.select().from(teams)
     .where(and(
       eq(teams.leagueId, leagueId),
       eq(teams.seasonYear, seasonYear)
-    ))
-    .orderBy(desc(teams.wins));
+    ));
+
+  // Group by espnTeamId and aggregate stats
+  const teamMap = new Map<number, Team>();
+  
+  for (const team of allTeams) {
+    const existing = teamMap.get(team.espnTeamId);
+    
+    if (!existing) {
+      // First time seeing this espnTeamId, use this team
+      teamMap.set(team.espnTeamId, { ...team });
+    } else {
+      // Aggregate stats for same espnTeamId
+      existing.wins = (existing.wins || 0) + (team.wins || 0);
+      existing.losses = (existing.losses || 0) + (team.losses || 0);
+      existing.ties = (existing.ties || 0) + (team.ties || 0);
+      existing.pointsFor = (existing.pointsFor || 0) + (team.pointsFor || 0);
+      existing.pointsAgainst = (existing.pointsAgainst || 0) + (team.pointsAgainst || 0);
+      
+      // Use the most recent team name (higher id = more recent)
+      if (team.id > existing.id) {
+        existing.name = team.name;
+        existing.logoUrl = team.logoUrl;
+      }
+    }
+  }
+
+  // Convert map to array and sort by wins
+  return Array.from(teamMap.values()).sort((a, b) => (b.wins || 0) - (a.wins || 0));
 }
 
 export async function getTeamById(teamId: number): Promise<Team | null> {

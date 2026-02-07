@@ -292,3 +292,16 @@
 - [x] Add chart legends and axis labels
 - [x] Style charts to match dark theme with proper colors
 - [x] Add icons to chart card headers for visual clarity
+
+## Duplicate Team Entries in Standings (CRITICAL)
+- [x] Fix standings showing duplicate entries for same team with different names
+- [x] Group teams by espnTeamId instead of team name
+- [x] Aggregate stats (W-L-T, PF, PA) across all seasons for same espnTeamId
+- [x] Display most recent team name in standings
+- [x] Update backend query to consolidate team data by espnTeamId
+- [x] Implement Map-based grouping logic in getTeamsByLeagueAndSeason
+- [x] Use highest team.id to determine most recent name and logo
+- [x] Sort consolidated teams by wins descending
+- [x] Write and pass vitest tests for team consolidation logic
+- [x] Test that teams with name changes appear as single entry
+- [x] Verify stats are correctly summed across name changes
