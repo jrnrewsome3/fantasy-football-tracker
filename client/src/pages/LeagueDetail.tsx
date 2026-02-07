@@ -355,7 +355,11 @@ export default function LeagueDetail() {
                     </TableHeader>
                     <TableBody>
                       {sortedTeams.map((team, index) => (
-                        <TableRow key={team.id} className="cursor-pointer hover:bg-accent/50">
+                        <TableRow 
+                          key={team.id} 
+                          className="cursor-pointer hover:bg-accent/50"
+                          onClick={() => setLocation(`/team/${team.espnTeamId}/${league.espnLeagueId}/history`)}
+                        >
                           <TableCell className="font-medium">{index + 1}</TableCell>
                           <TableCell>
                             <div>

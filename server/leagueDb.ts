@@ -364,3 +364,78 @@ export async function getTeamAllTimeStats(teamId: number): Promise<TeamAllTimeSt
 
   return result[0] || null;
 }
+
+// ============ TEAM HISTORY ============
+
+export async function getTeamHistory(espnTeamId: number, espnLeagueId: string): Promise<Team[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all seasons for this ESPN team across all league instances
+  const leagueInstances = await db.select().from(leagues)
+    .where(eq(leagues.espnLeagueId, espnLeagueId));
+  
+  const leagueIds = leagueInstances.map(l => l.id);
+  if (leagueIds.length === 0) return [];
+
+  // Get team data for all seasons
+  const teamHistory = await db.select().from(teams)
+    .where(eq(teams.espnTeamId, espnTeamId))
+    .orderBy(desc(teams.seasonYear));
+
+  return teamHistory.filter(t => leagueIds.includes(t.leagueId));
+}
+
+// ============ SEASON SUMMARIES ============
+
+export async function getSeasonSummaries(espnLeagueId: string): Promise<Array<{
+  league: League;
+  teamCount: number;
+  totalGames: number;
+  topScorer: { name: string; points: number } | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all league instances (seasons) for this ESPN league
+  const leagueInstances = await db.select().from(leagues)
+    .where(eq(leagues.espnLeagueId, espnLeagueId))
+    .orderBy(desc(leagues.seasonYear));
+
+  const summaries = [];
+
+  for (const league of leagueInstances) {
+    // Get team count for this season
+    const seasonTeams = await db.select().from(teams)
+      .where(and(
+        eq(teams.leagueId, league.id),
+        eq(teams.seasonYear, league.seasonYear)
+      ));
+
+    // Get matchup count
+    const seasonMatchups = await db.select().from(matchups)
+      .where(and(
+        eq(matchups.leagueId, league.id),
+        eq(matchups.seasonYear, league.seasonYear)
+      ));
+
+    // Find top scorer
+    const topScorerTeam = seasonTeams.length > 0
+      ? seasonTeams.reduce((max, team) => 
+          (team.pointsFor || 0) > (max.pointsFor || 0) ? team : max
+        )
+      : null;
+
+    summaries.push({
+      league,
+      teamCount: seasonTeams.length,
+      totalGames: seasonMatchups.length,
+      topScorer: topScorerTeam ? {
+        name: topScorerTeam.name,
+        points: topScorerTeam.pointsFor || 0
+      } : null,
+    });
+  }
+
+  return summaries;
+}

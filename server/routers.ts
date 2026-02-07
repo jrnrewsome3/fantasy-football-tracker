@@ -156,6 +156,27 @@ export const appRouter = router({
         const { generateWeeklyRecap } = await import('./weeklyRecap');
         return await generateWeeklyRecap(input.leagueId, input.week, input.seasonYear);
       }),
+
+    // Get team history across all seasons
+    teamHistory: protectedProcedure
+      .input(z.object({
+        espnTeamId: z.number(),
+        espnLeagueId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { getTeamHistory } = await import('./leagueDb');
+        return await getTeamHistory(input.espnTeamId, input.espnLeagueId);
+      }),
+
+    // Get season summaries for all seasons
+    seasonSummaries: protectedProcedure
+      .input(z.object({
+        espnLeagueId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { getSeasonSummaries } = await import('./leagueDb');
+        return await getSeasonSummaries(input.espnLeagueId);
+      }),
   }),
 });
 

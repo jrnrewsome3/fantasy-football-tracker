@@ -215,3 +215,26 @@
 - [x] Add year context to all sections (highlights, top performers, upsets)
 - [x] Update all section descriptions to include week and year
 - [x] Make it immediately obvious what year's data is being displayed
+
+## Historical Team Profile Page
+- [x] Create backend query to get team history across all seasons
+- [x] Build team profile page route (/team/:espnTeamId/:espnLeagueId/history)
+- [x] Display team header with name and logo
+- [x] Show year-over-year stats table (Season, W-L-T, PF, PA, Diff)
+- [x] Add career stats summary cards (record, points, differential)
+- [x] Calculate win percentages and point averages
+- [x] Add navigation from standings table (click team rows)
+- [x] Show total career stats summary with 4 stat cards
+- [x] Write vitest tests for team history query
+
+## Browse Seasons Page
+- [x] Create backend query to get all seasons with summary stats
+- [x] Build browse seasons page route (/seasons/:espnLeagueId)
+- [x] Display season cards in grid layout with visual design
+- [x] Show quick stats for each season (teams, total games, top scorer, weeks)
+- [x] Add season year prominently on each card with calendar icon
+- [x] Link cards to league detail page (click to navigate)
+- [x] Add 'Browse Seasons' button on dashboard league cards
+- [x] Sort seasons by year (newest first)
+- [x] Add archive summary card with total stats
+- [x] Write vitest tests for seasons summary query

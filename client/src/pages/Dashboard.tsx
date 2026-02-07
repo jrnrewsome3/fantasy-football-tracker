@@ -223,6 +223,16 @@ export default function Dashboard() {
                     </div>
                     <div className="flex gap-2">
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/seasons/${league.espnLeagueId}`);
+                        }}
+                      >
+                        Browse Seasons
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleRenameClick(e, { id: league.id, name: league.name })}
