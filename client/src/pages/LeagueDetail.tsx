@@ -196,11 +196,33 @@ export default function LeagueDetail() {
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">{league.name}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {selectedSeason ? `Viewing ${selectedSeason} Season Data` : `${league.seasonYear} Season • Week ${league.currentWeek} of ${league.totalWeeks}`}
+                  Viewing <span className="font-semibold text-primary">{selectedSeason || league.seasonYear} Season</span> Data • Week {league.currentWeek} of {league.totalWeeks}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              {availableSeasons.length > 1 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Season:</span>
+                  <Select
+                    value={selectedSeason?.toString() || league.seasonYear.toString()}
+                    onValueChange={(value) => setSelectedSeason(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[120px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSeasons.map((season) => (
+                        <SelectItem key={season} value={season.toString()}>
+                          {season}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -242,6 +264,7 @@ export default function LeagueDetail() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
                 {syncMutation.isPending ? 'Syncing...' : 'Sync Data'}
               </Button>
+              </div>
             </div>
           </div>
         </div>

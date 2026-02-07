@@ -260,3 +260,24 @@
 - [ ] Fix the root cause of league recreation
 - [ ] Ensure delete operation properly removes leagues from database
 - [ ] Test that deleted leagues stay deleted after page refresh
+
+## League Detail Page Season Clarity
+- [x] Fix confusing "2018" label - make it clear which season's data is being displayed
+- [x] Add prominent season selector to league detail page header
+- [x] Allow switching between all available seasons (2018, 2019... 2025)
+- [x] Update all stats and highlights when season changes
+- [x] Show "Viewing [YEAR] Season Data" prominently in header
+- [x] Add calendar icon and bordered selector for visibility
+- [x] Highlight selected season year in primary color
+
+## AI Component Enhancement
+- [x] Make AI query component more prominent and visible
+- [x] Add strategic planning prompts (e.g., "Plan your strategy for next week")
+- [x] Include suggested questions users can ask
+- [x] Add visual indicators that AI can help with game planning
+- [x] Improve AI component design to stand out on the page
+- [x] Add examples like "Who should I start this week?" or "Analyze my team's weaknesses"
+- [x] Rename to "AI Strategy Assistant" with pulsing sparkles icon
+- [x] Add gradient background with border shadow for prominence
+- [x] Separate strategic planning questions from stats questions
+- [x] Add emoji indicators for question categories
