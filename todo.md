@@ -157,3 +157,17 @@
 - [x] Add social media sharing for Historical Highlights
 - [x] Create shareable text generation for highlight cards
 - [x] Add download buttons to league detail and highlights pages
+
+## Standings Page Improvements
+- [x] Add season selector dropdown to standings page
+- [x] Add descriptive labels explaining what data is shown
+- [x] Clean up layout with better organization and context
+- [x] Show which season's data is currently displayed
+
+## Team Comparison Tool
+- [x] Build team comparison page
+- [x] Add team selector dropdowns (select 2 teams)
+- [x] Display head-to-head matchup history
+- [x] Show win/loss record between the two teams
+- [x] Add scoring statistics comparison
+- [x] Include visual display for comparison data

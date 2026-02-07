@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download } from "lucide-react";
+import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download, Calendar, GitCompare } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
@@ -20,15 +22,46 @@ export default function LeagueDetail() {
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const utils = trpc.useUtils();
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
 
+  const league = leagues?.find(l => l.id === leagueId);
+
   const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery(
     { leagueId },
     { enabled: !!user && leagueId > 0 }
   );
+
+  // Get unique seasons from all leagues with same ESPN ID
+  const availableSeasons = leagues
+    ? Array.from(new Set(
+        leagues
+          .filter(l => l.espnLeagueId === league?.espnLeagueId)
+          .map(l => l.seasonYear)
+      )).sort((a, b) => b - a)
+    : [];
+
+  // Set default season to current league's season
+  useEffect(() => {
+    if (league && selectedSeason === null) {
+      setSelectedSeason(league.seasonYear);
+    }
+  }, [league, selectedSeason]);
+
+  // Update league ID when season changes
+  useEffect(() => {
+    if (selectedSeason && leagues && league) {
+      const seasonLeague = leagues.find(
+        l => l.espnLeagueId === league.espnLeagueId && l.seasonYear === selectedSeason
+      );
+      if (seasonLeague && seasonLeague.id !== leagueId) {
+        setLocation(`/league/${seasonLeague.id}`);
+      }
+    }
+  }, [selectedSeason, leagues, league, leagueId, setLocation]);
 
   const { data: transactions, isLoading: transactionsLoading } = trpc.league.transactions.useQuery(
     { leagueId, limit: 20 },
@@ -95,8 +128,6 @@ export default function LeagueDetail() {
       toast.error("Error generating report: " + error.message);
     }
   };
-
-  const league = leagues?.find(l => l.id === leagueId);
 
   if (authLoading) {
     return (
@@ -170,6 +201,14 @@ export default function LeagueDetail() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation(`/league/${leagueId}/compare`)}
+              >
+                <GitCompare className="mr-2 h-4 w-4" />
+                Compare Teams
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -253,8 +292,34 @@ export default function LeagueDetail() {
           <TabsContent value="standings" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>League Standings</CardTitle>
-                <CardDescription>Current season standings and team statistics</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>League Standings</CardTitle>
+                    <CardDescription>
+                      {selectedSeason ? `${selectedSeason} Season` : 'Current season'} standings and team statistics
+                    </CardDescription>
+                  </div>
+                  {availableSeasons.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <Select
+                        value={selectedSeason?.toString() || ''}
+                        onValueChange={(value) => setSelectedSeason(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Select season" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSeasons.map((season) => (
+                            <SelectItem key={season} value={season.toString()}>
+                              {season} Season
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {teamsLoading ? (
