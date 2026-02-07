@@ -171,3 +171,13 @@
 - [x] Show win/loss record between the two teams
 - [x] Add scoring statistics comparison
 - [x] Include visual display for comparison data
+
+## Weekly Recap Feature
+- [x] Build AI-powered weekly recap generator service
+- [x] Analyze matchup results to identify top performers
+- [x] Detect biggest upsets (underdog wins)
+- [x] Identify closest games and blowouts
+- [x] Generate engaging narrative summaries
+- [x] Create weekly recap UI page
+- [x] Add week navigation to browse historical recaps
+- [x] Display recap with sections for highlights, upsets, and storylines

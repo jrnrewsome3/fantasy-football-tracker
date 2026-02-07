@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download, Calendar, GitCompare } from "lucide-react";
+import { Trophy, ArrowLeft, Users, TrendingUp, Activity, RefreshCw, Download, Calendar, GitCompare, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -201,6 +201,14 @@ export default function LeagueDetail() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation(`/league/${leagueId}/recap`)}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Weekly Recap
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm" 

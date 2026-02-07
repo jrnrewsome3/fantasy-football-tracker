@@ -127,6 +127,18 @@ export const appRouter = router({
         const { generateLeagueStatsMarkdown } = await import('./pdfExport');
         return await generateLeagueStatsMarkdown(input.leagueId);
       }),
+
+    // Generate AI-powered weekly recap
+    weeklyRecap: protectedProcedure
+      .input(z.object({
+        leagueId: z.number(),
+        week: z.number(),
+        seasonYear: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const { generateWeeklyRecap } = await import('./weeklyRecap');
+        return await generateWeeklyRecap(input.leagueId, input.week, input.seasonYear);
+      }),
   }),
 });
 

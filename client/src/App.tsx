@@ -11,6 +11,7 @@ import LeagueSetup from "./pages/LeagueSetup";
 import HistoricalHighlights from "./pages/HistoricalHighlights";
 import FAQ from "./pages/FAQ";
 import TeamComparison from "./pages/TeamComparison";
+import WeeklyRecap from "./pages/WeeklyRecap";
 import OnboardingTutorial from "./components/OnboardingTutorial";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path={"/league/:id"} component={LeagueDetail} />
       <Route path={"/league/:id/highlights"} component={HistoricalHighlights} />
       <Route path={"/league/:id/compare"} component={TeamComparison} />
+      <Route path={"/league/:id/recap"} component={WeeklyRecap} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
