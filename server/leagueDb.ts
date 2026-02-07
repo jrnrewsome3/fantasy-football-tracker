@@ -124,6 +124,7 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
         ties: team.ties,
         pointsFor: team.pointsFor,
         pointsAgainst: team.pointsAgainst,
+        seasonYear: team.seasonYear,
         updatedAt: new Date(),
       },
     });
@@ -148,6 +149,18 @@ export async function getTeamsByLeague(leagueId: number): Promise<Team[]> {
 
   return await db.select().from(teams)
     .where(eq(teams.leagueId, leagueId))
+    .orderBy(desc(teams.wins));
+}
+
+export async function getTeamsByLeagueAndSeason(leagueId: number, seasonYear: number): Promise<Team[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(teams)
+    .where(and(
+      eq(teams.leagueId, leagueId),
+      eq(teams.seasonYear, seasonYear)
+    ))
     .orderBy(desc(teams.wins));
 }
 

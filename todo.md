@@ -192,3 +192,18 @@
 - [x] Clean up invalid/duplicate league entries (users can delete via trash icon)
 - [x] Improve multi-season league display and organization
 - [x] Show season year prominently in league cards
+
+## Standings Page Data Filtering Issues
+- [x] Fix standings page to filter teams by selected season (currently showing all teams from all years)
+- [x] Add prominent season selector to standings page
+- [x] Update backend query to only return teams that played in the selected season
+- [x] Add seasonYear column to teams table schema
+- [x] Update ESPN sync to include seasonYear when creating teams
+- [x] Migrate existing team data to include seasonYear from their leagues
+- [x] Create getTeamsByLeagueAndSeason function for filtered queries
+- [x] Update frontend to pass seasonYear filter to teams query
+- [x] Improve page descriptions and labels to clarify what data is being shown
+- [x] Update header to show which season is being viewed
+- [x] Update stats cards to show season-specific team counts
+- [x] Ensure team statistics (W/L/T/PF/PA) match the selected season
+- [x] Write and pass vitest tests for season-filtered teams query

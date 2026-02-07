@@ -1,0 +1,1 @@
+ALTER TABLE `teams` ADD `seasonYear` int NOT NULL;

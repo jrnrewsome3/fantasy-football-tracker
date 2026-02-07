@@ -75,6 +75,7 @@ export async function syncLeagueData(
       await upsertTeam({
         leagueId: league.id,
         espnTeamId: espnTeam.id,
+        seasonYear: seasonYear,
         name: espnTeam.name,
         abbreviation: espnTeam.abbreviation,
         logoUrl: espnTeam.logoURL,

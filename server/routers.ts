@@ -64,9 +64,15 @@ export const appRouter = router({
 
     // Get teams for a league
     teams: protectedProcedure
-      .input(z.object({ leagueId: z.number() }))
+      .input(z.object({ 
+        leagueId: z.number(),
+        seasonYear: z.number().optional()
+      }))
       .query(async ({ input }) => {
-        const { getTeamsByLeague } = await import('./leagueDb');
+        const { getTeamsByLeague, getTeamsByLeagueAndSeason } = await import('./leagueDb');
+        if (input.seasonYear) {
+          return await getTeamsByLeagueAndSeason(input.leagueId, input.seasonYear);
+        }
         return await getTeamsByLeague(input.leagueId);
       }),
 

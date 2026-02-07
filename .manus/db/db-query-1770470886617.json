@@ -1,0 +1,90 @@
+{
+  "query": "SELECT t.id, t.name, t.seasonYear, t.leagueId, l.seasonYear as leagueSeasonYear, l.name as leagueName \nFROM teams t \nJOIN leagues l ON t.leagueId = l.id \nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2sjWbm7jrNuDk9K.e972c4ac4ad3 --database emzkRtjywtDuhFrsc4XYvD --execute SELECT t.id, t.name, t.seasonYear, t.leagueId, l.seasonYear as leagueSeasonYear, l.name as leagueName \nFROM teams t \nJOIN leagues l ON t.leagueId = l.id \nLIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "SEMINOLE SADNESS ",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "2",
+      "name": "Pettis My Chubb",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "3",
+      "name": "Mayday Mayday",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "4",
+      "name": "Bottom of Da Bowl",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "5",
+      "name": "First Down Syndrome ",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "6",
+      "name": "Pain.",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "7",
+      "name": "William \"Sherone Moore\" Brooks",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "8",
+      "name": "Officially Unretired ",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "9",
+      "name": "Baking Brownies",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    },
+    {
+      "id": "10",
+      "name": "FAFO",
+      "seasonYear": "2018",
+      "leagueId": "120001",
+      "leagueSeasonYear": "2018",
+      "leagueName": "Trouble In Paradise"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tseasonYear\tleagueId\tleagueSeasonYear\tleagueName\n1\tSEMINOLE SADNESS \t2018\t120001\t2018\tTrouble In Paradise\n2\tPettis My Chubb\t2018\t120001\t2018\tTrouble In Paradise\n3\tMayday Mayday\t2018\t120001\t2018\tTrouble In Paradise\n4\tBottom of Da Bowl\t2018\t120001\t2018\tTrouble In Paradise\n5\tFirst Down Syndrome \t2018\t120001\t2018\tTrouble In Paradise\n6\tPain.\t2018\t120001\t2018\tTrouble In Paradise\n7\tWilliam \"Sherone Moore\" Brooks\t2018\t120001\t2018\tTrouble In Paradise\n8\tOfficially Unretired \t2018\t120001\t2018\tTrouble In Paradise\n9\tBaking Brownies\t2018\t120001\t2018\tTrouble In Paradise\n10\tFAFO\t2018\t120001\t2018\tTrouble In Paradise\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

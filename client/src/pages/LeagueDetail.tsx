@@ -31,8 +31,8 @@ export default function LeagueDetail() {
   const league = leagues?.find(l => l.id === leagueId);
 
   const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery(
-    { leagueId },
-    { enabled: !!user && leagueId > 0 }
+    { leagueId, seasonYear: selectedSeason || undefined },
+    { enabled: !!user && leagueId > 0 && selectedSeason !== null }
   );
 
   // Get unique seasons from all leagues with same ESPN ID
@@ -196,7 +196,7 @@ export default function LeagueDetail() {
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">{league.name}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {league.seasonYear} Season • Week {league.currentWeek} of {league.totalWeeks}
+                  {selectedSeason ? `Viewing ${selectedSeason} Season Data` : `${league.seasonYear} Season • Week ${league.currentWeek} of ${league.totalWeeks}`}
                 </p>
               </div>
             </div>
@@ -252,13 +252,16 @@ export default function LeagueDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Teams ({selectedSeason || league.seasonYear})</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-card-foreground">
                 {teamsLoading ? <Skeleton className="h-8 w-12" /> : teams?.length || 0}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Teams in {selectedSeason || league.seasonYear} season
+              </p>
             </CardContent>
           </Card>
 
@@ -302,9 +305,9 @@ export default function LeagueDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>League Standings</CardTitle>
+                    <CardTitle>League Standings - {selectedSeason || league?.seasonYear} Season</CardTitle>
                     <CardDescription>
-                      {selectedSeason ? `${selectedSeason} Season` : 'Current season'} standings and team statistics
+                      Final season standings showing {sortedTeams.length} teams that competed in {selectedSeason || league?.seasonYear}
                     </CardDescription>
                   </div>
                   {availableSeasons.length > 1 && (

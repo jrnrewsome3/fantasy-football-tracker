@@ -52,6 +52,7 @@ export const teams = mysqlTable("teams", {
   id: int("id").autoincrement().primaryKey(),
   leagueId: int("leagueId").notNull(),
   espnTeamId: int("espnTeamId").notNull(),
+  seasonYear: int("seasonYear").notNull(), // Season year for this team instance
   name: text("name").notNull(),
   abbreviation: varchar("abbreviation", { length: 10 }),
   logoUrl: text("logoUrl"),
