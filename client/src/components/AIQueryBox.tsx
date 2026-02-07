@@ -64,10 +64,10 @@ export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <CardTitle>AI Data Assistant</CardTitle>
+          <CardTitle>AI-Generated Stat Analysis</CardTitle>
         </div>
         <CardDescription>
-          Ask questions about your league stats and get instant answers
+          Ask natural language questions about your league data and get AI-powered insights based on historical stats, matchups, and team performance
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

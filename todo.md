@@ -144,3 +144,10 @@
 - [x] Improve dashboard formatting and data display
 - [ ] Add league name editing capability
 - [ ] Better error handling for invalid league data
+
+## Latest Feature Requests
+- [x] Update AI Assistant title to indicate "AI-Generated Stat Analysis"
+- [x] Improve AI output robustness with better data context and formatting
+- [x] Build Historical Highlights page with season/player/matchup filters
+- [x] Add visual data illustrations to Historical Highlights
+- [x] Add season filter dropdown to matchup viewer for browsing historical data

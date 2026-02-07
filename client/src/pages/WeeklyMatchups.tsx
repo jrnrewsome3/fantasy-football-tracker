@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface WeeklyMatchupsProps {
@@ -13,11 +14,16 @@ interface WeeklyMatchupsProps {
 
 export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: WeeklyMatchupsProps) {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedSeason, setSelectedSeason] = useState(seasonYear);
+
+  // Get all matchups to determine available seasons
+  const { data: allMatchups } = trpc.league.allMatchups.useQuery({ leagueId });
+  const availableSeasons = Array.from(new Set((allMatchups || []).map(m => m.seasonYear))).sort((a, b) => b - a);
 
   const { data: matchups, isLoading } = trpc.league.matchups.useQuery({
     leagueId,
     week: selectedWeek,
-    seasonYear,
+    seasonYear: selectedSeason,
   });
 
   const { data: teams } = trpc.league.teams.useQuery({ leagueId });
@@ -34,6 +40,25 @@ export default function WeeklyMatchups({ leagueId, currentWeek, seasonYear }: We
 
   return (
     <div className="space-y-4">
+      {/* Season Selector */}
+      {availableSeasons.length > 1 && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-muted-foreground">Historical Data Available</div>
+          <Select value={selectedSeason.toString()} onValueChange={(v) => setSelectedSeason(parseInt(v))}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select season" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableSeasons.map(season => (
+                <SelectItem key={season} value={season.toString()}>
+                  {season} Season {season === seasonYear && '(Current)'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Week Selector */}
       <div className="flex items-center justify-between">
         <Button

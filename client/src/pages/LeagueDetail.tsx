@@ -136,15 +136,25 @@ export default function LeagueDetail() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleSync}
-              disabled={syncMutation.isPending}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-              {syncMutation.isPending ? 'Syncing...' : 'Sync Data'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation(`/league/${leagueId}/highlights`)}
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                Highlights
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSync}
+                disabled={syncMutation.isPending}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                {syncMutation.isPending ? 'Syncing...' : 'Sync Data'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

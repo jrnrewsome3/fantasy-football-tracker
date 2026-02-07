@@ -60,25 +60,77 @@ export async function answerLeagueQuestion(
       transactions: recentTransactions.slice(0, 50), // Limit to avoid token overflow
     };
 
+    // Group matchups by season for better analysis
+    const matchupsBySeason = allMatchups.reduce((acc, m) => {
+      if (!acc[m.seasonYear]) acc[m.seasonYear] = [];
+      acc[m.seasonYear].push(m);
+      return acc;
+    }, {} as Record<number, typeof allMatchups>);
+
+    // Calculate season-specific stats
+    const seasonStats = Object.entries(matchupsBySeason).map(([year, matches]) => {
+      const teamSeasonStats = leagueTeams.map(team => {
+        const teamMatches = matches.filter(m => m.homeTeamId === team.id || m.awayTeamId === team.id);
+        let wins = 0, losses = 0, pointsFor = 0;
+        teamMatches.forEach(m => {
+          if (m.homeTeamId === team.id) {
+            pointsFor += m.homeScore || 0;
+            if ((m.homeScore || 0) > (m.awayScore || 0)) wins++;
+            else if ((m.homeScore || 0) < (m.awayScore || 0)) losses++;
+          } else {
+            pointsFor += m.awayScore || 0;
+            if ((m.awayScore || 0) > (m.homeScore || 0)) wins++;
+            else if ((m.awayScore || 0) < (m.homeScore || 0)) losses++;
+          }
+        });
+        return { team: team.name, wins, losses, pointsFor };
+      }).sort((a, b) => b.wins - a.wins || b.pointsFor - a.pointsFor);
+      return { year, stats: teamSeasonStats };
+    });
+
+    // Find highest scoring games
+    const highScoringGames = allMatchups
+      .map(m => ({
+        ...m,
+        totalPoints: (m.homeScore || 0) + (m.awayScore || 0),
+        homeTeam: leagueTeams.find(t => t.id === m.homeTeamId)?.name,
+        awayTeam: leagueTeams.find(t => t.id === m.awayTeamId)?.name,
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .slice(0, 10);
+
     // Create prompt for LLM
-    const systemPrompt = `You are a fantasy football data analyst. Answer questions about league data accurately and concisely.
+    const systemPrompt = `You are an expert fantasy football data analyst. Provide detailed, accurate answers with specific numbers, team names, and context.
 
-League Data:
-- League: ${league[0].name} (${league[0].seasonYear} Season)
-- Teams: ${leagueTeams.length} teams
-- Total Matchups: ${allMatchups.length}
+League Overview:
+- Name: ${league[0].name}
+- Current Season: ${league[0].seasonYear}
+- Total Teams: ${leagueTeams.length}
+- Historical Seasons: ${Object.keys(matchupsBySeason).join(', ')}
+- Total Games Played: ${allMatchups.length}
 
-Teams:
-${leagueTeams.map(t => `- ${t.name} (Owner: ${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''}, ${t.pointsFor} PF, ${t.pointsAgainst} PA`).join('\n')}
+Current Season Teams (${league[0].seasonYear}):
+${leagueTeams.map(t => `- ${t.name} (${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''} record, ${(t.pointsFor || 0).toFixed(1)} PF, ${(t.pointsAgainst || 0).toFixed(1)} PA`).join('\n')}
 
-Recent Matchups (last 20):
-${allMatchups.slice(-20).map(m => {
+Historical Season Leaders:
+${seasonStats.map(s => `\n${s.year} Season Top 3:\n${s.stats.slice(0, 3).map((t, i) => `  ${i + 1}. ${t.team}: ${t.wins}-${t.losses}, ${t.pointsFor.toFixed(1)} PF`).join('\n')}`).join('\n')}
+
+Top 5 Highest Scoring Games (All-Time):
+${highScoringGames.slice(0, 5).map((g, i) => `${i + 1}. Week ${g.week} ${g.seasonYear}: ${g.homeTeam} ${g.homeScore} vs ${g.awayTeam} ${g.awayScore} (${g.totalPoints.toFixed(1)} total)`).join('\n')}
+
+Recent Matchups (Last 15):
+${allMatchups.slice(-15).map(m => {
   const homeTeam = leagueTeams.find(t => t.id === m.homeTeamId);
   const awayTeam = leagueTeams.find(t => t.id === m.awayTeamId);
   return `Week ${m.week} (${m.seasonYear}): ${homeTeam?.name || 'Unknown'} ${m.homeScore} vs ${awayTeam?.name || 'Unknown'} ${m.awayScore}`;
 }).join('\n')}
 
-Answer the user's question based on this data. Be specific with numbers and names. If asking about a specific year, filter the data accordingly.`;
+Instructions:
+- Answer with specific numbers, team names, and years
+- When asked about a specific season, use that season's data
+- Format your response clearly with bullet points or numbered lists when appropriate
+- Include context and comparisons to make insights meaningful
+- If data is missing or unclear, state that explicitly`;
 
     const response = await invokeLLM({
       messages: [
