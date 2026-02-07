@@ -370,3 +370,16 @@
 - [x] Update frontend query to pass allTime flag and espnLeagueId
 - [x] Write and pass vitest tests for all-time standings logic
 - [x] Test both modes with proper data filtering
+
+## Standings Page Refinements (CRITICAL)
+- [x] Fix "Viewing 2018 Season Data" to "Viewing Data from 2018 to 2025"
+- [x] Update header to show data range from earliest to latest season
+- [x] Fix Single Season mode - now properly shows only selected season data
+- [x] Update query logic to use selectedSeason or league.seasonYear as fallback
+- [x] Update "League Standings - 2018 Season" to "League Standings (2018-2025)" in all-time mode
+- [x] In single season mode, show "League Standings - [YEAR] Season"
+- [x] Add ESPN ID column to standings table (hidden on mobile, visible on desktop)
+- [x] Update "Total Teams" stat card to reflect correct context (all-time vs single season)
+- [x] Add dynamic labels based on viewMode (alltime vs single)
+- [x] Ensure aggregation uses ESPN ID not team names (already implemented, now ID is visible)
+- [x] Test that single season mode shows only that season's data

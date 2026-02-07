@@ -34,11 +34,11 @@ export default function LeagueDetail() {
   const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery(
     { 
       leagueId, 
-      seasonYear: viewMode === 'single' ? (selectedSeason || undefined) : undefined,
+      seasonYear: viewMode === 'single' ? (selectedSeason || league?.seasonYear) : undefined,
       espnLeagueId: league?.espnLeagueId,
       allTime: viewMode === 'alltime'
     },
-    { enabled: !!user && leagueId > 0 && selectedSeason !== null && !!league }
+    { enabled: !!user && leagueId > 0 && !!league && (viewMode === 'alltime' || !!selectedSeason || !!league?.seasonYear) }
   );
 
   // Get unique seasons from all leagues with same ESPN ID
@@ -202,7 +202,7 @@ export default function LeagueDetail() {
               <div>
                 <h1 className="text-2xl font-bold text-card-foreground">{league.name}</h1>
                 <p className="text-sm text-muted-foreground">
-                  Viewing <span className="font-semibold text-primary">{selectedSeason || league.seasonYear} Season</span> Data • Week {league.currentWeek} of {league.totalWeeks}
+                  Viewing Data from <span className="font-semibold text-primary">{availableSeasons[availableSeasons.length - 1] || 2018}</span> to <span className="font-semibold text-primary">{availableSeasons[0] || new Date().getFullYear()}</span> • Week {league.currentWeek} of {league.totalWeeks}
                 </p>
               </div>
             </div>
@@ -281,7 +281,9 @@ export default function LeagueDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Teams ({selectedSeason || league.seasonYear})</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {viewMode === 'alltime' ? 'Total Teams (All-Time)' : `Total Teams (${selectedSeason || league.seasonYear})`}
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -289,7 +291,10 @@ export default function LeagueDetail() {
                 {teamsLoading ? <Skeleton className="h-8 w-12" /> : teams?.length || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Teams in {selectedSeason || league.seasonYear} season
+                {viewMode === 'alltime' 
+                  ? 'Unique teams across all seasons'
+                  : `Teams in ${selectedSeason || league.seasonYear} season`
+                }
               </p>
             </CardContent>
           </Card>
@@ -409,6 +414,7 @@ export default function LeagueDetail() {
                         <TableRow>
                           <TableHead className="w-8 sm:w-12 text-xs sm:text-sm">#</TableHead>
                           <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">Team</TableHead>
+                          <TableHead className="text-xs sm:text-sm hidden lg:table-cell">ESPN ID</TableHead>
                           <TableHead className="text-center text-xs sm:text-sm">W</TableHead>
                           <TableHead className="text-center text-xs sm:text-sm">L</TableHead>
                           <TableHead className="text-center text-xs sm:text-sm hidden sm:table-cell">T</TableHead>
@@ -433,6 +439,7 @@ export default function LeagueDetail() {
                                 )}
                               </div>
                             </TableCell>
+                            <TableCell className="text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">{team.espnTeamId}</TableCell>
                             <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.wins || 0}</TableCell>
                             <TableCell className="text-center text-xs sm:text-sm font-semibold">{team.losses || 0}</TableCell>
                             <TableCell className="text-center text-xs sm:text-sm hidden sm:table-cell">{team.ties || 0}</TableCell>
