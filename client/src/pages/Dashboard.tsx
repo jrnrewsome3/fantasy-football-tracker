@@ -3,19 +3,40 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle } from "lucide-react";
+import { Trophy, Users, TrendingUp, Activity, Plus, Loader2, HelpCircle, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useRestartTutorial } from "@/components/OnboardingTutorial";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const restartTutorial = useRestartTutorial();
+  const utils = trpc.useUtils();
 
   const { data: leagues, isLoading: leaguesLoading } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
   });
+
+  const deleteMutation = trpc.league.delete.useMutation({
+    onSuccess: () => {
+      toast.success("League deleted successfully");
+      utils.league.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete league", {
+        description: error.message,
+      });
+    },
+  });
+
+  const handleDelete = (e: React.MouseEvent, leagueId: number, leagueName: string) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete "${leagueName}"? This will remove all associated data.`)) {
+      deleteMutation.mutate({ leagueId });
+    }
+  };
 
   if (authLoading) {
     return (
@@ -157,15 +178,27 @@ export default function Dashboard() {
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-card-foreground">{league.name}</h3>
+                        <h3 className="font-semibold text-card-foreground">
+                          {league.name === `League ${league.espnLeagueId}` ? `ESPN League ${league.espnLeagueId}` : league.name}
+                        </h3>
                         <p className="text-sm text-muted-foreground">
-                          {league.seasonYear} Season • Week {league.currentWeek}
+                          {league.seasonYear} Season • Week {league.currentWeek || 1}
                         </p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      View League →
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDelete(e, league.id, league.name)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        View League →
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

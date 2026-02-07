@@ -137,3 +137,10 @@
 - [ ] Build historical matchup stories feature
 - [ ] Create championship history timeline
 - [ ] Add season-over-season comparison views
+
+## New Feature Requests
+- [x] Add AI-powered data query interface (ask questions about stats and get answers)
+- [x] Add league deletion functionality to clean up incorrect entries
+- [x] Improve dashboard formatting and data display
+- [ ] Add league name editing capability
+- [ ] Better error handling for invalid league data

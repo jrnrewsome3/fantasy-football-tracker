@@ -10,6 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
+import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
 
 export default function LeagueDetail() {
@@ -194,6 +195,7 @@ export default function LeagueDetail() {
             <TabsTrigger value="standings">Standings</TabsTrigger>
             <TabsTrigger value="matchups">Matchups</TabsTrigger>
             <TabsTrigger value="alltime">All-Time Stats</TabsTrigger>
+            <TabsTrigger value="ai">AI Assistant</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
@@ -269,6 +271,10 @@ export default function LeagueDetail() {
 
           <TabsContent value="alltime" className="space-y-4">
             <AllTimeStats leagueId={leagueId} />
+          </TabsContent>
+
+          <TabsContent value="ai" className="space-y-4">
+            <AIQueryBox leagueId={leagueId} />
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-4">

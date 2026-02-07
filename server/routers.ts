@@ -100,6 +100,25 @@ export const appRouter = router({
         const { getRecentTransactions } = await import('./leagueDb');
         return await getRecentTransactions(input.leagueId, input.limit);
       }),
+
+    // Delete a league
+    delete: protectedProcedure
+      .input(z.object({ leagueId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteLeague } = await import('./leagueDb');
+        return await deleteLeague(input.leagueId);
+      }),
+
+    // AI-powered data query
+    aiQuery: protectedProcedure
+      .input(z.object({
+        leagueId: z.number(),
+        question: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { answerLeagueQuestion } = await import('./aiQuery');
+        return await answerLeagueQuestion(input.leagueId, input.question);
+      }),
   }),
 });
 

@@ -63,6 +63,32 @@ export async function getAllLeagues(): Promise<League[]> {
   return await db.select().from(leagues).orderBy(desc(leagues.updatedAt));
 }
 
+export async function deleteLeague(leagueId: number): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: 'Database not available' };
+
+  try {
+    // Delete all related data first (cascade)
+    // Note: teamAllTimeStats links to teamId, not leagueId
+    // We need to delete stats for teams in this league
+    const leagueTeams = await db.select().from(teams).where(eq(teams.leagueId, leagueId));
+    for (const team of leagueTeams) {
+      await db.delete(teamAllTimeStats).where(eq(teamAllTimeStats.teamId, team.id));
+    }
+    
+    await db.delete(playerStats).where(eq(playerStats.leagueId, leagueId));
+    await db.delete(transactions).where(eq(transactions.leagueId, leagueId));
+    await db.delete(matchups).where(eq(matchups.leagueId, leagueId));
+    await db.delete(teams).where(eq(teams.leagueId, leagueId));
+    await db.delete(leagues).where(eq(leagues.id, leagueId));
+
+    return { success: true, message: 'League and all related data deleted successfully' };
+  } catch (error: any) {
+    console.error('[LeagueDB] Error deleting league:', error);
+    return { success: false, message: error.message || 'Failed to delete league' };
+  }
+}
+
 // ============ TEAMS ============
 
 export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
