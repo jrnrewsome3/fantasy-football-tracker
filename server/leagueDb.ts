@@ -192,6 +192,46 @@ export async function getTeamsByLeagueAndSeason(leagueId: number, seasonYear: nu
   return Array.from(teamMap.values()).sort((a, b) => (b.wins || 0) - (a.wins || 0));
 }
 
+export async function getTeamsByEspnLeagueAllTime(espnLeagueId: string): Promise<Team[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all teams across all seasons for this ESPN league
+  const allTeams = await db.select().from(teams)
+    .innerJoin(leagues, eq(teams.leagueId, leagues.id))
+    .where(eq(leagues.espnLeagueId, espnLeagueId));
+
+  // Group by espnTeamId and aggregate career stats
+  const teamMap = new Map<number, Team>();
+  
+  for (const row of allTeams) {
+    const team = row.teams;
+    const existing = teamMap.get(team.espnTeamId);
+    
+    if (!existing) {
+      // First time seeing this espnTeamId, use this team
+      teamMap.set(team.espnTeamId, { ...team });
+    } else {
+      // Aggregate career stats for same espnTeamId
+      existing.wins = (existing.wins || 0) + (team.wins || 0);
+      existing.losses = (existing.losses || 0) + (team.losses || 0);
+      existing.ties = (existing.ties || 0) + (team.ties || 0);
+      existing.pointsFor = (existing.pointsFor || 0) + (team.pointsFor || 0);
+      existing.pointsAgainst = (existing.pointsAgainst || 0) + (team.pointsAgainst || 0);
+      
+      // Use the most recent team name (higher id = more recent)
+      if (team.id > existing.id) {
+        existing.name = team.name;
+        existing.logoUrl = team.logoUrl;
+        existing.ownerName = team.ownerName;
+      }
+    }
+  }
+
+  // Convert map to array and sort by career wins
+  return Array.from(teamMap.values()).sort((a, b) => (b.wins || 0) - (a.wins || 0));
+}
+
 export async function getTeamById(teamId: number): Promise<Team | null> {
   const db = await getDb();
   if (!db) return null;

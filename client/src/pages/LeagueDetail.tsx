@@ -23,6 +23,7 @@ export default function LeagueDetail() {
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const utils = trpc.useUtils();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'single' | 'alltime'>('single');
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -31,8 +32,13 @@ export default function LeagueDetail() {
   const league = leagues?.find(l => l.id === leagueId);
 
   const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery(
-    { leagueId, seasonYear: selectedSeason || undefined },
-    { enabled: !!user && leagueId > 0 && selectedSeason !== null }
+    { 
+      leagueId, 
+      seasonYear: viewMode === 'single' ? (selectedSeason || undefined) : undefined,
+      espnLeagueId: league?.espnLeagueId,
+      allTime: viewMode === 'alltime'
+    },
+    { enabled: !!user && leagueId > 0 && selectedSeason !== null && !!league }
   );
 
   // Get unique seasons from all leagues with same ESPN ID
@@ -328,33 +334,65 @@ export default function LeagueDetail() {
           <TabsContent value="standings" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>League Standings - {selectedSeason || league?.seasonYear} Season</CardTitle>
-                    <CardDescription>
-                      Final season standings showing {sortedTeams.length} teams that competed in {selectedSeason || league?.seasonYear}
-                    </CardDescription>
-                  </div>
-                  {availableSeasons.length > 1 && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <Select
-                        value={selectedSeason?.toString() || ''}
-                        onValueChange={(value) => setSelectedSeason(parseInt(value))}
-                      >
-                        <SelectTrigger className="w-[140px]">
-                          <SelectValue placeholder="Select season" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSeasons.map((season) => (
-                            <SelectItem key={season} value={season.toString()}>
-                              {season} Season
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <CardTitle>
+                        {viewMode === 'single' 
+                          ? `League Standings - ${selectedSeason || league?.seasonYear} Season`
+                          : `All-Time Career Standings (Since ${availableSeasons[availableSeasons.length - 1] || 2018})`
+                        }
+                      </CardTitle>
+                      <CardDescription>
+                        {viewMode === 'single'
+                          ? `Season standings showing ${sortedTeams.length} teams that competed in ${selectedSeason || league?.seasonYear}`
+                          : `Career totals across all seasons showing ${sortedTeams.length} unique teams`
+                        }
+                      </CardDescription>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* View Mode Toggle */}
+                      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                        <Button
+                          variant={viewMode === 'single' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('single')}
+                          className="text-xs"
+                        >
+                          Single Season
+                        </Button>
+                        <Button
+                          variant={viewMode === 'alltime' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('alltime')}
+                          className="text-xs"
+                        >
+                          All-Time
+                        </Button>
+                      </div>
+                      {/* Season Selector (only for single season mode) */}
+                      {viewMode === 'single' && availableSeasons.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <Select
+                            value={selectedSeason?.toString() || ''}
+                            onValueChange={(value) => setSelectedSeason(parseInt(value))}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="Select season" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableSeasons.map((season) => (
+                                <SelectItem key={season} value={season.toString()}>
+                                  {season} Season
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -391,7 +429,7 @@ export default function LeagueDetail() {
                               <div>
                                 <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">{team.name}</div>
                                 {team.ownerName && (
-                                  <div className="text-xs text-muted-foreground line-clamp-1 hidden sm:block">{team.ownerName}</div>
+                                  <div className="text-xs text-muted-foreground line-clamp-1">{team.ownerName}</div>
                                 )}
                               </div>
                             </TableCell>

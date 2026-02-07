@@ -355,3 +355,18 @@
 - [x] Write vitest tests for owner stats aggregation
 - [x] Add ownerLeaderboard procedure to tRPC router
 - [x] Add route /leaderboard/:espnLeagueId to App.tsx
+
+## Standings Page UX Improvements (CRITICAL)
+- [x] Add toggle between "Single Season" and "All-Time Career" view modes
+- [x] Single Season mode: show stats for selected season only
+- [x] All-Time Career mode: show cumulative stats across all seasons
+- [x] Update header labels dynamically based on selected mode
+- [x] Add toggle UI with two buttons (Single Season / All-Time)
+- [x] Make owner names visible on mobile (removed hidden class)
+- [x] Add clear description for each mode
+- [x] Update backend to support all-time career stats query
+- [x] Create getTeamsByEspnLeagueAllTime function for all-time aggregation
+- [x] Update teams procedure to accept allTime and espnLeagueId parameters
+- [x] Update frontend query to pass allTime flag and espnLeagueId
+- [x] Write and pass vitest tests for all-time standings logic
+- [x] Test both modes with proper data filtering

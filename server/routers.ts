@@ -66,13 +66,24 @@ export const appRouter = router({
     teams: protectedProcedure
       .input(z.object({ 
         leagueId: z.number(),
-        seasonYear: z.number().optional()
+        seasonYear: z.number().optional(),
+        espnLeagueId: z.string().optional(),
+        allTime: z.boolean().optional()
       }))
       .query(async ({ input }) => {
-        const { getTeamsByLeague, getTeamsByLeagueAndSeason } = await import('./leagueDb');
+        const { getTeamsByLeague, getTeamsByLeagueAndSeason, getTeamsByEspnLeagueAllTime } = await import('./leagueDb');
+        
+        // All-time mode: aggregate across all seasons
+        if (input.allTime && input.espnLeagueId) {
+          return await getTeamsByEspnLeagueAllTime(input.espnLeagueId);
+        }
+        
+        // Single season mode
         if (input.seasonYear) {
           return await getTeamsByLeagueAndSeason(input.leagueId, input.seasonYear);
         }
+        
+        // Default: all teams for league
         return await getTeamsByLeague(input.leagueId);
       }),
 
