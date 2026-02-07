@@ -130,3 +130,9 @@
 - [x] Write vitest tests for trade sync and queries (6 tests passing)
 - [ ] Test AI analysis with real historical trades (requires actual ESPN data sync)
 - [ ] Verify trade data accuracy with ESPN league (requires user to sync their league)
+
+## Deployment Fix
+- [x] Fix ESPN API module resolution error in production
+- [x] Update espnClient.ts to use correct production imports (changed from 'node-dev' to 'node')
+- [x] Test deployment fix locally (dev server running, no TypeScript errors)
+- [x] Verify build succeeds without module errors

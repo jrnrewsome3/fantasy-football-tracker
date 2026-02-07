@@ -4,7 +4,7 @@
  */
 
 // @ts-ignore - ESPN library doesn't have TypeScript definitions
-import { Client } from 'espn-fantasy-football-api/node-dev';
+import { Client } from 'espn-fantasy-football-api/node';
 
 export interface ESPNCredentials {
   leagueId: number;
