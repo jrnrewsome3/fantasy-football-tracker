@@ -102,3 +102,4 @@
 
 ## New Features
 - [x] Add Sync Now button to league detail page for on-demand ESPN data refresh
+- [x] Build head-to-head records matrix showing win/loss records between all team pairs
