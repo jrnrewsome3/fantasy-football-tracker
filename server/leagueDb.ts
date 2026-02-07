@@ -467,3 +467,98 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<Array<{
 
   return summaries;
 }
+
+// ============ OWNER LEADERBOARD ============
+
+export async function getOwnerLeaderboard(espnLeagueId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    // Get all teams for this ESPN league across all seasons
+    const allTeams = await db.select().from(teams)
+      .innerJoin(leagues, eq(teams.leagueId, leagues.id))
+      .where(eq(leagues.espnLeagueId, espnLeagueId));
+
+    // Group by owner name and aggregate stats
+    const ownerStatsMap = new Map<string, {
+      ownerName: string;
+      totalWins: number;
+      totalLosses: number;
+      totalTies: number;
+      totalPointsFor: number;
+      totalPointsAgainst: number;
+      seasonsPlayed: number;
+      bestSeasonWins: number;
+      bestSeasonYear: number;
+      worstSeasonWins: number;
+      worstSeasonYear: number;
+    }>();
+
+    for (const { teams: team, leagues: league } of allTeams) {
+      if (!team.ownerName) continue;
+
+      const existing = ownerStatsMap.get(team.ownerName);
+      const wins = team.wins || 0;
+      const losses = team.losses || 0;
+      const ties = team.ties || 0;
+      const pf = team.pointsFor || 0;
+      const pa = team.pointsAgainst || 0;
+
+      if (existing) {
+        existing.totalWins += wins;
+        existing.totalLosses += losses;
+        existing.totalTies += ties;
+        existing.totalPointsFor += pf;
+        existing.totalPointsAgainst += pa;
+        existing.seasonsPlayed += 1;
+
+        // Track best season
+        if (wins > existing.bestSeasonWins) {
+          existing.bestSeasonWins = wins;
+          existing.bestSeasonYear = league.seasonYear;
+        }
+
+        // Track worst season
+        if (wins < existing.worstSeasonWins) {
+          existing.worstSeasonWins = wins;
+          existing.worstSeasonYear = league.seasonYear;
+        }
+      } else {
+        ownerStatsMap.set(team.ownerName, {
+          ownerName: team.ownerName,
+          totalWins: wins,
+          totalLosses: losses,
+          totalTies: ties,
+          totalPointsFor: pf,
+          totalPointsAgainst: pa,
+          seasonsPlayed: 1,
+          bestSeasonWins: wins,
+          bestSeasonYear: league.seasonYear,
+          worstSeasonWins: wins,
+          worstSeasonYear: league.seasonYear,
+        });
+      }
+    }
+
+    // Convert to array and calculate win percentages
+    const leaderboard = Array.from(ownerStatsMap.values()).map(owner => {
+      const totalGames = owner.totalWins + owner.totalLosses + owner.totalTies;
+      const winPercentage = totalGames > 0 ? (owner.totalWins / totalGames) * 100 : 0;
+      const avgPointsPerSeason = owner.seasonsPlayed > 0 ? owner.totalPointsFor / owner.seasonsPlayed : 0;
+
+      return {
+        ...owner,
+        winPercentage,
+        avgPointsPerSeason,
+        totalGames,
+      };
+    });
+
+    // Sort by total wins descending
+    return leaderboard.sort((a, b) => b.totalWins - a.totalWins);
+  } catch (error) {
+    console.error('[LeagueDB] Error getting owner leaderboard:', error);
+    return [];
+  }
+}

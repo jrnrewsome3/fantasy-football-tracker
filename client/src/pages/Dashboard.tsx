@@ -227,6 +227,16 @@ export default function Dashboard() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setLocation(`/leaderboard/${league.espnLeagueId}`);
+                        }}
+                      >
+                        Leaderboard
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setLocation(`/seasons/${league.espnLeagueId}`);
                         }}
                       >

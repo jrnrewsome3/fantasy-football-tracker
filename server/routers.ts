@@ -177,6 +177,16 @@ export const appRouter = router({
         const { getSeasonSummaries } = await import('./leagueDb');
         return await getSeasonSummaries(input.espnLeagueId);
       }),
+
+    // Get owner leaderboard with lifetime stats
+    ownerLeaderboard: protectedProcedure
+      .input(z.object({
+        espnLeagueId: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { getOwnerLeaderboard } = await import('./leagueDb');
+        return await getOwnerLeaderboard(input.espnLeagueId);
+      }),
   }),
 });
 

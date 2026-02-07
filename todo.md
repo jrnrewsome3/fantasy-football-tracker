@@ -335,3 +335,23 @@
 - [x] Ensure owner names are visible on mobile without causing overflow
 - [x] Owner names already visible in standings table (desktop)
 - [x] Weekly recap uses team names from backend (already includes proper names)
+
+## Owner Leaderboard Page
+- [x] Create backend query to aggregate owner stats across all seasons
+- [x] Calculate total wins, losses, ties for each owner
+- [x] Calculate total points scored and points against
+- [x] Calculate win percentage for each owner
+- [x] Track best season wins and year for each owner
+- [x] Track worst season wins and year for each owner
+- [x] Build OwnerLeaderboard page component
+- [x] Display rankings with owner names and lifetime stats
+- [x] Add sorting options (by wins, win %, points)
+- [x] Show owner's best season with wins and year
+- [x] Add trophy icons for top 3 rankings (gold, silver, bronze)
+- [x] Add navigation link to leaderboard from dashboard
+- [x] Create "Leaderboard" button on league cards
+- [x] Make leaderboard mobile-responsive with hidden columns on small screens
+- [x] Add stats summary cards at top of leaderboard
+- [x] Write vitest tests for owner stats aggregation
+- [x] Add ownerLeaderboard procedure to tRPC router
+- [x] Add route /leaderboard/:espnLeagueId to App.tsx
