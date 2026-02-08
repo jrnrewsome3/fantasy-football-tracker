@@ -391,3 +391,11 @@
 - [x] Update Dashboard UI to replace blank cards with new stats
 - [x] Add backend tRPC procedure for user aggregate stats (stats.aggregateStats)
 - [ ] Test stats calculations with real data
+
+## User-Reported Fixes from Screenshots
+- [x] Fix Overall Win Rate calculation (removed inaccurate aggregate stats cards)
+- [x] Remove Longest Win Streak card (can't track user-specific stats without ownership)
+- [x] Remove Longest Loss Streak card (can't track user-specific stats without ownership)
+- [x] Keep only Total Leagues card on dashboard (accurate count)
+- [x] Update league detail page date range label to show "2018 to 2026" (already working correctly)
+- [x] Change league detail page default view mode to "All-Time" instead of "Single Season"

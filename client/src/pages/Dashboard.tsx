@@ -22,9 +22,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: stats, isLoading: statsLoading } = trpc.stats.aggregateStats.useQuery(undefined, {
-    enabled: !!user,
-  });
+
 
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState<{ id: number; name: string } | null>(null);
@@ -135,8 +133,8 @@ export default function Dashboard() {
 
       <div className="container py-8">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
+        <div className="mb-8">
+          <Card className="max-w-xs">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Leagues</CardTitle>
               <Trophy className="h-4 w-4 text-muted-foreground" />
@@ -145,55 +143,6 @@ export default function Dashboard() {
               <div className="text-2xl font-bold text-card-foreground">
                 {leaguesLoading ? <Skeleton className="h-8 w-12" /> : leagues?.length || 0}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overall Win Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-card-foreground">
-                {statsLoading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : stats?.overallWinRate !== null ? (
-                  `${stats.overallWinRate.toFixed(1)}%`
-                ) : (
-                  "--"
-                )}
-              </div>
-              {stats && stats.totalGames > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.totalWins}W-{stats.totalLosses}L-{stats.totalTies}T
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Longest Win Streak</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-card-foreground">
-                {statsLoading ? <Skeleton className="h-8 w-12" /> : stats?.longestWinStreak || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">consecutive wins</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Longest Loss Streak</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-card-foreground">
-                {statsLoading ? <Skeleton className="h-8 w-12" /> : stats?.longestLossStreak || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">consecutive losses</p>
             </CardContent>
           </Card>
         </div>

@@ -23,7 +23,7 @@ export default function LeagueDetail() {
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const utils = trpc.useUtils();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'single' | 'alltime'>('single');
+  const [viewMode, setViewMode] = useState<'single' | 'alltime'>('alltime');
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
