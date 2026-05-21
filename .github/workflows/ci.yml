@@ -1,0 +1,61 @@
+name: CI
+
+# Runs on every push to main AND on every pull request
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Type Check, Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js 22 (matches your package.json engine)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 3. Install pnpm (your package manager)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      # 4. Cache pnpm store for faster installs
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      # 5. Install all dependencies
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 6. TypeScript type check (catches type errors before they reach prod)
+      - name: TypeScript check
+        run: pnpm check
+
+      # 7. Run Vitest unit tests
+      - name: Run tests
+        run: pnpm test --run
+
+      # 8. Build the full app (client + server)
+      - name: Build
+        run: pnpm build
+        env:
+          NODE_ENV: production
