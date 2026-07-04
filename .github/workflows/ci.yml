@@ -27,7 +27,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       # 4. Cache pnpm store for faster installs
       - name: Get pnpm store directory
