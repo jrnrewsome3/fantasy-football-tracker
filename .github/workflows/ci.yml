@@ -23,11 +23,9 @@ jobs:
         with:
           node-version: '22'
 
-      # 3. Install pnpm (your package manager)
+      # 3. Install pnpm — version comes from package.json "packageManager" field
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       # 4. Cache pnpm store for faster installs
       - name: Get pnpm store directory

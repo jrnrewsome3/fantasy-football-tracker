@@ -226,6 +226,9 @@ All environment variables are injected by the Manus platform. Do not commit `.en
 # Install dependencies
 pnpm install
 
+# Copy env template and fill in values (required to run the app locally)
+cp .env.example .env
+
 # Push database schema changes
 pnpm db:push
 
@@ -242,6 +245,27 @@ pnpm test
 
 Vitest is used for all unit and integration tests. Test files are co-located with server logic under `server/*.test.ts`.
 
+### Prerequisites
+
+- **Node.js 22+** and **pnpm 10+** installed
+- No database or ESPN credentials are required — the test suite runs without external services
+- Copy `.env.example` to `.env` when running the app locally (not needed for tests)
+
+### Running tests
+
+```bash
+# Run all tests once (used in CI)
+pnpm test
+
+# Watch mode — re-runs affected tests on file save
+pnpm test:watch
+
+# Run with coverage report (outputs to ./coverage/)
+pnpm test:coverage
+```
+
+### Test files
+
 | Test File | Coverage |
 |---|---|
 | `auth.logout.test.ts` | Auth logout procedure |
@@ -254,6 +278,15 @@ Vitest is used for all unit and integration tests. Test files are co-located wit
 | `league.teamConsolidation.test.ts` | Team deduplication by ESPN ID |
 | `league.teamHistory.test.ts` | Team history across seasons |
 | `weeklyRecap.test.ts` | Weekly recap generation |
+
+### Common failure notes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Error: Database not available` | `DATABASE_URL` not set — expected in CI/local without a DB | Tests skip DB-dependent assertions; this is not a failure |
+| `Error: No matchups found` | No data synced for the test league/week | Same — tests skip gracefully |
+| `Cannot find module '@shared/...'` | Path aliases not resolved | Run tests via `pnpm test`, not directly with `node` |
+| TypeScript errors in test files | Test files are excluded from `tsc` by design | Run `pnpm check` for production code only; test types are checked by Vitest |
 
 ---
 
