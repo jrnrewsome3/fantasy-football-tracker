@@ -1,6 +1,6 @@
 /** Import archived ESPN seasons into one connected league record. */
 
-import { getLeagueByEspnId } from "./leagueDb";
+import { getLeagueByEspnId, upsertLeagueSeason } from "./leagueDb";
 import { syncHistoricalSeasonData, syncWeekMatchups } from "./espnSync";
 
 export interface MultiSeasonSyncResult {
@@ -30,6 +30,18 @@ async function importSeason(espnLeagueId: string, year: number) {
       (total, result) => total + (result.matchupsSynced || 0),
       0
     );
+  }
+
+  const league = await getLeagueByEspnId(espnLeagueId);
+  if (league) {
+    await upsertLeagueSeason({
+      leagueId: league.id,
+      seasonYear: year,
+      standingsComplete: 1,
+      matchupsComplete: matchupsSynced > 0 ? 1 : 0,
+      ownershipComplete: 1,
+      source: "espn-public",
+    });
   }
 
   return {

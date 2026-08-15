@@ -1,59 +1,97 @@
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Trophy, TrendingUp, TrendingDown, Award } from "lucide-react";
 import HeadToHeadMatrix from "./HeadToHeadMatrix";
 
 interface AllTimeStatsProps {
   leagueId: number;
+  espnLeagueId: string;
 }
 
-export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
-  const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery({ leagueId });
-  const { data: allMatchups, isLoading: matchupsLoading } = trpc.league.allMatchups.useQuery({ leagueId });
+export default function AllTimeStats({
+  leagueId,
+  espnLeagueId,
+}: AllTimeStatsProps) {
+  const { data: teams, isLoading: teamsLoading } = trpc.league.teams.useQuery({
+    leagueId,
+    espnLeagueId,
+    allTime: true,
+  });
+  const { data: allMatchups, isLoading: matchupsLoading } =
+    trpc.league.allMatchups.useQuery({ leagueId });
 
   // Calculate all-time records
-  const allTimeRecords = teams?.map(team => {
-    const teamMatchups = allMatchups?.filter(
-      m => m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId
-    ) || [];
+  const allTimeRecords =
+    teams?.map(team => {
+      const teamMatchups =
+        allMatchups?.filter(
+          m =>
+            m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId
+        ) || [];
 
-    let totalWins = 0;
-    let totalLosses = 0;
-    let totalPointsFor = 0;
-    let highestScore = 0;
-    let lowestScore = 999;
+      let totalWins = 0;
+      let totalLosses = 0;
+      let totalPointsFor = 0;
+      let highestScore = 0;
+      let lowestScore = 999;
 
-    teamMatchups.forEach(matchup => {
-      const isHome = matchup.homeTeamId === team.espnTeamId;
-      const teamScore = isHome ? (matchup.homeScore || 0) : (matchup.awayScore || 0);
-      const oppScore = isHome ? (matchup.awayScore || 0) : (matchup.homeScore || 0);
+      teamMatchups.forEach(matchup => {
+        const isHome = matchup.homeTeamId === team.espnTeamId;
+        const teamScore = isHome
+          ? matchup.homeScore || 0
+          : matchup.awayScore || 0;
+        const oppScore = isHome
+          ? matchup.awayScore || 0
+          : matchup.homeScore || 0;
 
-      if (matchup.isComplete) {
-        if (teamScore > oppScore) totalWins++;
-        else if (teamScore < oppScore) totalLosses++;
-        
-        totalPointsFor += teamScore;
-        if (teamScore > highestScore) highestScore = teamScore;
-        if (teamScore < lowestScore && teamScore > 0) lowestScore = teamScore;
-      }
-    });
+        if (matchup.isComplete) {
+          if (teamScore > oppScore) totalWins++;
+          else if (teamScore < oppScore) totalLosses++;
 
-    return {
-      ...team,
-      allTimeWins: totalWins,
-      allTimeLosses: totalLosses,
-      allTimePointsFor: totalPointsFor,
-      highestScore,
-      lowestScore: lowestScore === 999 ? 0 : lowestScore,
-      gamesPlayed: totalWins + totalLosses,
-    };
-  }) || [];
+          totalPointsFor += teamScore;
+          if (teamScore > highestScore) highestScore = teamScore;
+          if (teamScore < lowestScore && teamScore > 0) lowestScore = teamScore;
+        }
+      });
 
-  const sortedByWins = [...allTimeRecords].sort((a, b) => b.allTimeWins - a.allTimeWins);
-  const sortedByPoints = [...allTimeRecords].sort((a, b) => b.allTimePointsFor - a.allTimePointsFor);
-  const highestScoringGame = [...allTimeRecords].sort((a, b) => b.highestScore - a.highestScore)[0];
+      return {
+        ...team,
+        allTimeWins: team.wins || totalWins,
+        allTimeLosses: team.losses || totalLosses,
+        allTimePointsFor: team.pointsFor || totalPointsFor,
+        highestScore,
+        lowestScore: lowestScore === 999 ? 0 : lowestScore,
+        gamesPlayed:
+          (team.wins || totalWins) +
+          (team.losses || totalLosses) +
+          (team.ties || 0),
+      };
+    }) || [];
+
+  const sortedByWins = [...allTimeRecords].sort(
+    (a, b) => b.allTimeWins - a.allTimeWins
+  );
+  const sortedByPoints = [...allTimeRecords].sort(
+    (a, b) => b.allTimePointsFor - a.allTimePointsFor
+  );
+  const highestScoringGame = [...allTimeRecords].sort(
+    (a, b) => b.highestScore - a.highestScore
+  )[0];
 
   const isLoading = teamsLoading || matchupsLoading;
 
@@ -71,7 +109,9 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
               <Skeleton className="h-8 w-full" />
             ) : sortedByWins[0] ? (
               <>
-                <div className="text-2xl font-bold text-card-foreground">{sortedByWins[0].name}</div>
+                <div className="text-2xl font-bold text-card-foreground">
+                  {sortedByWins[0].name}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {sortedByWins[0].allTimeWins} wins
                 </p>
@@ -92,7 +132,9 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
               <Skeleton className="h-8 w-full" />
             ) : sortedByPoints[0] ? (
               <>
-                <div className="text-2xl font-bold text-card-foreground">{sortedByPoints[0].name}</div>
+                <div className="text-2xl font-bold text-card-foreground">
+                  {sortedByPoints[0].name}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {sortedByPoints[0].allTimePointsFor.toFixed(1)} points
                 </p>
@@ -113,7 +155,9 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
               <Skeleton className="h-8 w-full" />
             ) : highestScoringGame ? (
               <>
-                <div className="text-2xl font-bold text-card-foreground">{highestScoringGame.highestScore.toFixed(1)}</div>
+                <div className="text-2xl font-bold text-card-foreground">
+                  {highestScoringGame.highestScore.toFixed(1)}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {highestScoringGame.name}
                 </p>
@@ -129,12 +173,14 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
       <Card>
         <CardHeader>
           <CardTitle>All-Time Standings</CardTitle>
-          <CardDescription>Historical performance across all seasons</CardDescription>
+          <CardDescription>
+            Historical performance across all seasons
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-2">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4].map(i => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
@@ -155,26 +201,40 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
               </TableHeader>
               <TableBody>
                 {sortedByWins.map((team, index) => {
-                  const winPct = team.gamesPlayed > 0 
-                    ? (team.allTimeWins / team.gamesPlayed * 100).toFixed(1)
-                    : "0.0";
-                  const avgPF = team.gamesPlayed > 0
-                    ? (team.allTimePointsFor / team.gamesPlayed).toFixed(1)
-                    : "0.0";
+                  const winPct =
+                    team.gamesPlayed > 0
+                      ? ((team.allTimeWins / team.gamesPlayed) * 100).toFixed(1)
+                      : "0.0";
+                  const avgPF =
+                    team.gamesPlayed > 0
+                      ? (team.allTimePointsFor / team.gamesPlayed).toFixed(1)
+                      : "0.0";
 
                   return (
                     <TableRow key={team.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell>
-                        <div className="font-semibold text-card-foreground">{team.name}</div>
+                        <div className="font-semibold text-card-foreground">
+                          {team.name}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-center">{team.allTimeWins}</TableCell>
-                      <TableCell className="text-center">{team.allTimeLosses}</TableCell>
+                      <TableCell className="text-center">
+                        {team.allTimeWins}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {team.allTimeLosses}
+                      </TableCell>
                       <TableCell className="text-center">{winPct}%</TableCell>
-                      <TableCell className="text-right">{team.allTimePointsFor.toFixed(1)}</TableCell>
+                      <TableCell className="text-right">
+                        {team.allTimePointsFor.toFixed(1)}
+                      </TableCell>
                       <TableCell className="text-right">{avgPF}</TableCell>
-                      <TableCell className="text-right text-green-500">{team.highestScore.toFixed(1)}</TableCell>
-                      <TableCell className="text-right text-red-500">{team.lowestScore.toFixed(1)}</TableCell>
+                      <TableCell className="text-right text-green-500">
+                        {team.highestScore.toFixed(1)}
+                      </TableCell>
+                      <TableCell className="text-right text-red-500">
+                        {team.lowestScore.toFixed(1)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -182,7 +242,8 @@ export default function AllTimeStats({ leagueId }: AllTimeStatsProps) {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No historical data available. Sync your league to see all-time stats.
+              No historical data available. Sync your league to see all-time
+              stats.
             </div>
           )}
         </CardContent>

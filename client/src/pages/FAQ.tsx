@@ -265,8 +265,10 @@ export default function FAQ() {
                   Yes. The commissioner taps "Import History" once after
                   connecting the current league. The app finds public archived
                   seasons tied to that ESPN League ID and imports their final
-                  standings and weekly matchups. Everyone can then switch
-                  seasons in Matchups and explore aggregated All-Time Stats.
+                  standings and weekly matchups. If ESPN keeps an archive
+                  private, the commissioner can upload a sanitized history file
+                  instead. The app clearly labels seasons that contain final
+                  standings but not weekly scores.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -376,10 +378,9 @@ export default function FAQ() {
               <AccordionItem value="item-16">
                 <AccordionTrigger>Can I export my data?</AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
-                  Data export features are planned for a future update. In the
-                  meantime, all your data is safely stored and accessible
-                  through the app. Your data comes directly from ESPN, so you
-                  always have access to the original source.
+                  Yes. The Export button downloads a Markdown league report with
+                  standings, season leaders, and selected highlights. Markdown
+                  can be pasted into Craft or converted to PDF.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

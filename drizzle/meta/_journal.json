@@ -43,6 +43,20 @@
       "when": 1786829933577,
       "tag": "0005_square_black_panther",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786831879254,
+      "tag": "0006_shallow_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1786832087565,
+      "tag": "0007_acoustic_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

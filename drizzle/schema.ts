@@ -100,6 +100,8 @@ export const teams = mysqlTable(
     abbreviation: varchar("abbreviation", { length: 10 }),
     logoUrl: text("logoUrl"),
     ownerName: text("ownerName"),
+    franchiseKey: varchar("franchiseKey", { length: 120 }),
+    historySource: varchar("historySource", { length: 64 }),
     userId: int("userId"), // Link to users table if owner has account
     wins: int("wins").default(0),
     losses: int("losses").default(0),
@@ -120,6 +122,34 @@ export const teams = mysqlTable(
 
 export type Team = typeof teams.$inferSelect;
 export type InsertTeam = typeof teams.$inferInsert;
+
+/** Coverage and podium metadata for imported or synchronized seasons. */
+export const leagueSeasons = mysqlTable(
+  "leagueSeasons",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    leagueId: int("leagueId").notNull(),
+    seasonYear: int("seasonYear").notNull(),
+    championName: text("championName"),
+    runnerUpName: text("runnerUpName"),
+    thirdPlaceName: text("thirdPlaceName"),
+    standingsComplete: int("standingsComplete").default(0).notNull(),
+    matchupsComplete: int("matchupsComplete").default(0).notNull(),
+    ownershipComplete: int("ownershipComplete").default(0).notNull(),
+    source: varchar("source", { length: 64 }).default("espn-public").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    leagueSeasonUnique: uniqueIndex("leagueSeasons_league_year_unique").on(
+      table.leagueId,
+      table.seasonYear
+    ),
+  })
+);
+
+export type LeagueSeason = typeof leagueSeasons.$inferSelect;
+export type InsertLeagueSeason = typeof leagueSeasons.$inferInsert;
 
 /**
  * Players in the fantasy league
