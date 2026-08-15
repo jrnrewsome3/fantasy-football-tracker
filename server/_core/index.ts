@@ -7,7 +7,7 @@ import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./static";
 import { pingDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -89,6 +89,8 @@ async function startServer() {
   );
 
   if (process.env.NODE_ENV === "development") {
+    // Dynamic import so production esbuild (with NODE_ENV define) drops vite.
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
     serveStatic(app);
