@@ -1,4 +1,12 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -35,6 +43,14 @@ export const leagues = mysqlTable("leagues", {
   seasonYear: int("seasonYear").notNull(),
   espnS2: text("espnS2"),
   swid: varchar("swid", { length: 128 }),
+  commissionerUserId: int("commissionerUserId"),
+  inviteCode: varchar("inviteCode", { length: 32 }).unique(),
+  autoSync: int("autoSync").default(1).notNull(),
+  syncIntervalMinutes: int("syncIntervalMinutes").default(30).notNull(),
+  lastSyncStatus: varchar("lastSyncStatus", { length: 20 })
+    .default("pending")
+    .notNull(),
+  lastSyncError: text("lastSyncError"),
   currentWeek: int("currentWeek").default(1),
   totalWeeks: int("totalWeeks").default(17),
   lastSyncedAt: timestamp("lastSyncedAt"),
@@ -44,6 +60,31 @@ export const leagues = mysqlTable("leagues", {
 
 export type League = typeof leagues.$inferSelect;
 export type InsertLeague = typeof leagues.$inferInsert;
+
+/** Commissioner/member access to a connected league. */
+export const leagueMembers = mysqlTable(
+  "leagueMembers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    leagueId: int("leagueId").notNull(),
+    userId: int("userId").notNull(),
+    role: mysqlEnum("role", ["commissioner", "member"])
+      .default("member")
+      .notNull(),
+    espnTeamId: int("espnTeamId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    leagueUserUnique: uniqueIndex("leagueMembers_league_user_unique").on(
+      table.leagueId,
+      table.userId
+    ),
+  })
+);
+
+export type LeagueMember = typeof leagueMembers.$inferSelect;
+export type InsertLeagueMember = typeof leagueMembers.$inferInsert;
 
 /**
  * Teams in the fantasy league
@@ -86,6 +127,34 @@ export const players = mysqlTable("players", {
 
 export type Player = typeof players.$inferSelect;
 export type InsertPlayer = typeof players.$inferInsert;
+
+/** Latest league-specific free-agent and waiver-wire snapshot. */
+export const leagueAvailablePlayers = mysqlTable(
+  "leagueAvailablePlayers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    leagueId: int("leagueId").notNull(),
+    playerId: int("playerId").notNull(),
+    seasonYear: int("seasonYear").notNull(),
+    scoringPeriod: int("scoringPeriod").notNull(),
+    availabilityStatus: varchar("availabilityStatus", { length: 20 })
+      .default("FREEAGENT")
+      .notNull(),
+    percentOwned: int("percentOwned").default(0),
+    percentStarted: int("percentStarted").default(0),
+    ownershipTrend: int("ownershipTrend").default(0),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    leaguePlayerSeasonUnique: uniqueIndex(
+      "availablePlayers_league_player_season_unique"
+    ).on(table.leagueId, table.playerId, table.seasonYear),
+  })
+);
+
+export type LeagueAvailablePlayer = typeof leagueAvailablePlayers.$inferSelect;
+export type InsertLeagueAvailablePlayer =
+  typeof leagueAvailablePlayers.$inferInsert;
 
 /**
  * Weekly matchups between teams

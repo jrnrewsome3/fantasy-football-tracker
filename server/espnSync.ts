@@ -7,9 +7,11 @@ import {
   createESPNClient,
   fetchTeams,
   fetchBoxScores,
+  fetchFreeAgents,
+  fetchLeagueInfo,
   fetchRecentActivity,
   ESPNCredentials,
-} from './espnClient';
+} from "./espnClient";
 import {
   upsertLeague,
   upsertTeam,
@@ -18,7 +20,8 @@ import {
   insertPlayerStat,
   insertTransaction,
   getLeagueByEspnId,
-} from './leagueDb';
+  replaceAvailablePlayers,
+} from "./leagueDb";
 
 export interface SyncResult {
   success: boolean;
@@ -48,22 +51,32 @@ export async function syncLeagueData(
 
     const client = createESPNClient(credentials);
 
+    // Confirm the league is publicly viewable before storing it. Private
+    // league session cookies are intentionally not collected by this app.
+    const leagueInfo = await fetchLeagueInfo(client, seasonYear);
+    const detectedWeek = Math.max(
+      1,
+      Number(leagueInfo.currentScoringPeriodId || 1)
+    );
+
     // Upsert league
     const league = await upsertLeague({
       espnLeagueId,
-      name: `League ${espnLeagueId}`, // Will be updated with actual name if available
+      name: leagueInfo.name || `ESPN League ${espnLeagueId}`,
       seasonYear,
-      espnS2,
-      swid,
-      currentWeek: 1,
+      espnS2: null,
+      swid: null,
+      currentWeek: detectedWeek,
       totalWeeks: 17,
       lastSyncedAt: new Date(),
+      lastSyncStatus: "success",
+      lastSyncError: null,
     });
 
     if (!league) {
       return {
         success: false,
-        message: 'Failed to create/update league in database',
+        message: "Failed to create/update league in database",
       };
     }
 
@@ -95,10 +108,62 @@ export async function syncLeagueData(
       teamsSynced,
     };
   } catch (error: any) {
-    console.error('[ESPN Sync] Error syncing league data:', error);
+    console.error("[ESPN Sync] Error syncing league data:", error);
     return {
       success: false,
-      message: error.message || 'Failed to sync league data',
+      message: error.message || "Failed to sync league data",
+    };
+  }
+}
+
+/** Refresh the league-specific waiver wire/free-agent pool. */
+export async function syncAvailablePlayers(
+  espnLeagueId: string,
+  seasonYear: number,
+  scoringPeriod: number
+): Promise<SyncResult> {
+  try {
+    const league = await getLeagueByEspnId(espnLeagueId);
+    if (!league) return { success: false, message: "League not found" };
+
+    const client = createESPNClient({
+      leagueId: Number(espnLeagueId),
+      seasonId: seasonYear,
+    });
+    const freeAgents = await fetchFreeAgents(
+      client,
+      seasonYear,
+      Math.max(1, scoringPeriod)
+    );
+    await replaceAvailablePlayers(
+      league.id,
+      seasonYear,
+      Math.max(1, scoringPeriod),
+      freeAgents.slice(0, 300).map(player => ({
+        player: {
+          espnPlayerId: player.id,
+          name: player.fullName,
+          position: player.position,
+          nflTeam: player.proTeam,
+          status: player.injuryStatus,
+        },
+        availabilityStatus: player.availabilityStatus || "FREEAGENT",
+        percentOwned: Math.round(player.percentOwned || 0),
+        percentStarted: Math.round(player.percentStarted || 0),
+        ownershipTrend: Math.round((player.percentChange || 0) * 100),
+      }))
+    );
+
+    return {
+      success: true,
+      message: `Synced ${Math.min(freeAgents.length, 300)} available players`,
+      playersSynced: Math.min(freeAgents.length, 300),
+    };
+  } catch (error: any) {
+    console.error("[ESPN Sync] Error syncing available players:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to sync available players",
     };
   }
 }
@@ -118,7 +183,7 @@ export async function syncWeekMatchups(
     if (!league) {
       return {
         success: false,
-        message: 'League not found in database. Please sync league data first.',
+        message: "League not found in database. Please sync league data first.",
       };
     }
 
@@ -175,7 +240,7 @@ export async function syncWeekMatchups(
               seasonYear,
               points: rosterPlayer.totalPoints,
               projectedPoints: rosterPlayer.projectedPoints,
-              wasStarted: rosterPlayer.position !== 'Bench' ? 1 : 0,
+              wasStarted: rosterPlayer.position !== "Bench" ? 1 : 0,
               slotPosition: rosterPlayer.position,
             });
             playersSynced++;
@@ -203,7 +268,7 @@ export async function syncWeekMatchups(
               seasonYear,
               points: rosterPlayer.totalPoints,
               projectedPoints: rosterPlayer.projectedPoints,
-              wasStarted: rosterPlayer.position !== 'Bench' ? 1 : 0,
+              wasStarted: rosterPlayer.position !== "Bench" ? 1 : 0,
               slotPosition: rosterPlayer.position,
             });
             playersSynced++;
@@ -219,10 +284,10 @@ export async function syncWeekMatchups(
       playersSynced,
     };
   } catch (error: any) {
-    console.error('[ESPN Sync] Error syncing week matchups:', error);
+    console.error("[ESPN Sync] Error syncing week matchups:", error);
     return {
       success: false,
-      message: error.message || 'Failed to sync week matchups',
+      message: error.message || "Failed to sync week matchups",
     };
   }
 }
@@ -241,7 +306,7 @@ export async function syncLeagueActivity(
     if (!league) {
       return {
         success: false,
-        message: 'League not found in database',
+        message: "League not found in database",
       };
     }
 
@@ -277,11 +342,11 @@ export async function syncLeagueActivity(
       transactionsSynced,
     };
   } catch (error: any) {
-    console.error('[ESPN Sync] Error syncing activity:', error);
+    console.error("[ESPN Sync] Error syncing activity:", error);
     // Don't fail if activity sync fails - it's not critical
     return {
       success: true,
-      message: 'Activity sync not available for this league',
+      message: "Activity sync not available for this league",
       transactionsSynced: 0,
     };
   }
@@ -299,17 +364,36 @@ export async function fullLeagueSync(
 ): Promise<SyncResult> {
   try {
     // Sync league and teams
-    const leagueResult = await syncLeagueData(espnLeagueId, seasonYear, espnS2, swid);
+    const leagueResult = await syncLeagueData(
+      espnLeagueId,
+      seasonYear,
+      espnS2,
+      swid
+    );
     if (!leagueResult.success) {
       return leagueResult;
     }
+
+    // ESPN is the source of truth for the active scoring period. This matters
+    // on first connection, when the UI does not know the league's current week.
+    const refreshedLeague = await getLeagueByEspnId(espnLeagueId);
+    const effectiveWeek = Math.max(
+      1,
+      refreshedLeague?.currentWeek || currentWeek
+    );
 
     let totalMatchups = 0;
     let totalPlayers = 0;
 
     // Sync all weeks up to current week
-    for (let week = 1; week <= currentWeek; week++) {
-      const weekResult = await syncWeekMatchups(espnLeagueId, seasonYear, week, espnS2, swid);
+    for (let week = 1; week <= effectiveWeek; week++) {
+      const weekResult = await syncWeekMatchups(
+        espnLeagueId,
+        seasonYear,
+        week,
+        espnS2,
+        swid
+      );
       if (weekResult.success) {
         totalMatchups += weekResult.matchupsSynced || 0;
         totalPlayers += weekResult.playersSynced || 0;
@@ -318,6 +402,7 @@ export async function fullLeagueSync(
 
     // Sync activity
     await syncLeagueActivity(espnLeagueId, seasonYear, espnS2, swid);
+    await syncAvailablePlayers(espnLeagueId, seasonYear, effectiveWeek);
 
     return {
       success: true,
@@ -327,10 +412,10 @@ export async function fullLeagueSync(
       playersSynced: totalPlayers,
     };
   } catch (error: any) {
-    console.error('[ESPN Sync] Error in full sync:', error);
+    console.error("[ESPN Sync] Error in full sync:", error);
     return {
       success: false,
-      message: error.message || 'Failed to complete full sync',
+      message: error.message || "Failed to complete full sync",
     };
   }
 }

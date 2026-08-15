@@ -4,7 +4,7 @@
  */
 
 // @ts-ignore - ESPN library doesn't have TypeScript definitions
-import pkg from 'espn-fantasy-football-api/node-dev.js';
+import pkg from "espn-fantasy-football-api/node-dev.js";
 const { Client } = pkg;
 
 export interface ESPNCredentials {
@@ -35,6 +35,10 @@ export interface ESPNPlayer {
   position: string;
   proTeam?: string;
   injuryStatus?: string;
+  availabilityStatus?: string;
+  percentOwned?: number;
+  percentStarted?: number;
+  percentChange?: number;
 }
 
 export interface ESPNBoxScore {
@@ -89,15 +93,20 @@ export async function fetchLeagueInfo(client: any, seasonId: number) {
     const leagueInfo = await client.getLeagueInfo({ seasonId });
     return leagueInfo;
   } catch (error) {
-    console.error('[ESPN Client] Error fetching league info:', error);
-    throw new Error('Failed to fetch league information from ESPN');
+    console.error("[ESPN Client] Error fetching league info:", error);
+    throw new Error(
+      "ESPN could not read this league. Confirm the League ID and ask the League Manager to enable public viewability in ESPN."
+    );
   }
 }
 
 /**
  * Fetch teams for a season
  */
-export async function fetchTeams(client: any, seasonId: number): Promise<ESPNTeam[]> {
+export async function fetchTeams(
+  client: any,
+  seasonId: number
+): Promise<ESPNTeam[]> {
   try {
     const teams = await client.getTeamsAtWeek({ seasonId, scoringPeriodId: 1 });
     return teams.map((team: any) => ({
@@ -105,16 +114,26 @@ export async function fetchTeams(client: any, seasonId: number): Promise<ESPNTea
       name: team.name,
       abbreviation: team.abbreviation,
       logoURL: team.logoURL,
-      owners: team.owners,
+      owners: team.owners || (team.ownerName ? [team.ownerName] : []),
       wins: team.wins || 0,
       losses: team.losses || 0,
       ties: team.ties || 0,
-      pointsFor: Math.round(team.pointsFor || 0),
-      pointsAgainst: Math.round(team.pointsAgainst || 0),
+      pointsFor: Math.round(
+        team.pointsFor ??
+          team.regularSeasonPointsFor ??
+          team.totalPointsScored ??
+          0
+      ),
+      pointsAgainst: Math.round(
+        team.pointsAgainst ??
+          team.regularSeasonPointsAgainst ??
+          team.totalPointsAgainst ??
+          0
+      ),
     }));
   } catch (error) {
-    console.error('[ESPN Client] Error fetching teams:', error);
-    throw new Error('Failed to fetch teams from ESPN');
+    console.error("[ESPN Client] Error fetching teams:", error);
+    throw new Error("Failed to fetch teams from ESPN");
   }
 }
 
@@ -141,38 +160,40 @@ export async function fetchBoxScores(
       awayScore: Math.round(box.awayScore || 0),
       homeProjectedScore: Math.round(box.homeProjectedScore || 0),
       awayProjectedScore: Math.round(box.awayProjectedScore || 0),
-      homeRoster: box.homeRoster?.map((p: any) => ({
-        player: {
-          id: p.player?.id,
-          firstName: p.player?.firstName,
-          lastName: p.player?.lastName,
-          fullName: p.player?.fullName,
-          position: p.player?.position,
-          proTeam: p.player?.proTeam,
-          injuryStatus: p.player?.injuryStatus,
-        },
-        position: p.position,
-        totalPoints: Math.round(p.totalPoints || 0),
-        projectedPoints: Math.round(p.projectedPoints || 0),
-      })) || [],
-      awayRoster: box.awayRoster?.map((p: any) => ({
-        player: {
-          id: p.player?.id,
-          firstName: p.player?.firstName,
-          lastName: p.player?.lastName,
-          fullName: p.player?.fullName,
-          position: p.player?.position,
-          proTeam: p.player?.proTeam,
-          injuryStatus: p.player?.injuryStatus,
-        },
-        position: p.position,
-        totalPoints: Math.round(p.totalPoints || 0),
-        projectedPoints: Math.round(p.projectedPoints || 0),
-      })) || [],
+      homeRoster:
+        box.homeRoster?.map((p: any) => ({
+          player: {
+            id: p.player?.id,
+            firstName: p.player?.firstName,
+            lastName: p.player?.lastName,
+            fullName: p.player?.fullName,
+            position: p.player?.position,
+            proTeam: p.player?.proTeam,
+            injuryStatus: p.player?.injuryStatus,
+          },
+          position: p.position,
+          totalPoints: Math.round(p.totalPoints || 0),
+          projectedPoints: Math.round(p.projectedPoints || 0),
+        })) || [],
+      awayRoster:
+        box.awayRoster?.map((p: any) => ({
+          player: {
+            id: p.player?.id,
+            firstName: p.player?.firstName,
+            lastName: p.player?.lastName,
+            fullName: p.player?.fullName,
+            position: p.player?.position,
+            proTeam: p.player?.proTeam,
+            injuryStatus: p.player?.injuryStatus,
+          },
+          position: p.position,
+          totalPoints: Math.round(p.totalPoints || 0),
+          projectedPoints: Math.round(p.projectedPoints || 0),
+        })) || [],
     }));
   } catch (error) {
-    console.error('[ESPN Client] Error fetching boxscores:', error);
-    throw new Error('Failed to fetch boxscores from ESPN');
+    console.error("[ESPN Client] Error fetching boxscores:", error);
+    throw new Error("Failed to fetch boxscores from ESPN");
   }
 }
 
@@ -196,9 +217,13 @@ export async function fetchFreeAgents(
       firstName: player.firstName,
       lastName: player.lastName,
       fullName: player.fullName,
-      position: player.position,
-      proTeam: player.proTeam,
+      position: player.defaultPosition || player.position,
+      proTeam: player.proTeamAbbreviation || player.proTeam,
       injuryStatus: player.injuryStatus,
+      availabilityStatus: player.availabilityStatus,
+      percentOwned: player.percentOwned,
+      percentStarted: player.percentStarted,
+      percentChange: player.percentChange,
     }));
 
     // Filter by position if specified
@@ -208,8 +233,8 @@ export async function fetchFreeAgents(
 
     return players;
   } catch (error) {
-    console.error('[ESPN Client] Error fetching free agents:', error);
-    throw new Error('Failed to fetch free agents from ESPN');
+    console.error("[ESPN Client] Error fetching free agents:", error);
+    throw new Error("Failed to fetch free agents from ESPN");
   }
 }
 
@@ -235,7 +260,7 @@ export async function fetchRecentActivity(
       details: act,
     }));
   } catch (error) {
-    console.error('[ESPN Client] Error fetching activity:', error);
+    console.error("[ESPN Client] Error fetching activity:", error);
     // Don't throw - activity might not be available for all leagues
     return [];
   }

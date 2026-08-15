@@ -1,5 +1,9 @@
 import "dotenv/config";
-import express, { type Request, type Response, type NextFunction } from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { createServer } from "http";
 import net from "net";
 import helmet from "helmet";
@@ -9,6 +13,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./static";
 import { pingDb, runMigrations } from "../db";
+import { startLeagueAutoSync } from "../autoSync";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -118,6 +123,7 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    startLeagueAutoSync();
   });
 }
 

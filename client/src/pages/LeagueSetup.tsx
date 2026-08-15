@@ -2,115 +2,88 @@ import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, Trophy, AlertCircle, CheckCircle2, History } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  CheckCircle2,
+  ExternalLink,
+  Link2,
+  Loader2,
+  ShieldCheck,
+  Trophy,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+function extractLeagueId(value: string) {
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    return (
+      url.searchParams.get("leagueId") ||
+      url.pathname.match(/league\/([0-9]+)/)?.[1] ||
+      ""
+    );
+  } catch {
+    return trimmed.match(/leagueId[=/]([0-9]+)/i)?.[1] || "";
+  }
+}
 
 export default function LeagueSetup() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  
-  const [espnLeagueId, setEspnLeagueId] = useState("");
-  const [seasonYear, setSeasonYear] = useState(new Date().getFullYear().toString());
-  const [currentWeek, setCurrentWeek] = useState("1");
-  const [espnS2, setEspnS2] = useState("");
-  const [swid, setSwid] = useState("");
-  const [syncAllSeasons, setSyncAllSeasons] = useState(true);
+  const [leagueLink, setLeagueLink] = useState("");
 
-  const singleSeasonSync = trpc.league.sync.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("League synced successfully!", {
-          description: `Synced ${data.teamsSynced} teams, ${data.matchupsSynced} matchups`,
-        });
-        setLocation("/dashboard");
-      } else {
-        toast.error("Sync failed", {
+  const connectLeague = trpc.league.sync.useMutation({
+    onSuccess: data => {
+      if (!data.success) {
+        toast.error("We could not connect that league", {
           description: data.message,
         });
-      }
-    },
-    onError: (error) => {
-      toast.error("Sync failed", {
-        description: error.message,
-      });
-    },
-  });
-
-  const multiSeasonSync = trpc.league.syncAllSeasons.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Synced ${data.seasonsSynced} season(s)!`, {
-          description: data.message,
-          duration: 5000,
-        });
-        setLocation("/dashboard");
-      } else {
-        toast.error("Multi-season sync failed", {
-          description: data.message,
-        });
-      }
-    },
-    onError: (error) => {
-      toast.error("Multi-season sync failed", {
-        description: error.message,
-      });
-    },
-  });
-
-  const handleSync = () => {
-    if (!espnLeagueId) {
-      toast.error("Please enter your ESPN League ID");
-      return;
-    }
-
-    if (syncAllSeasons) {
-      // Sync all historical seasons
-      multiSeasonSync.mutate({
-        espnLeagueId,
-        espnS2: espnS2 || undefined,
-        swid: swid || undefined,
-      });
-    } else {
-      // Sync single season
-      if (!seasonYear) {
-        toast.error("Please enter a season year");
         return;
       }
-      singleSeasonSync.mutate({
-        espnLeagueId,
-        seasonYear: parseInt(seasonYear),
-        currentWeek: parseInt(currentWeek),
-        espnS2: espnS2 || undefined,
-        swid: swid || undefined,
+      toast.success("League connected and automatic updates are on", {
+        description: `${data.teamsSynced || 0} teams and ${data.playersSynced || 0} player records synced.`,
       });
-    }
-  };
+      setLocation("/dashboard");
+    },
+    onError: error =>
+      toast.error("Connection failed", { description: error.message }),
+  });
 
-  const isLoading = singleSeasonSync.isPending || multiSeasonSync.isPending;
+  const handleConnect = () => {
+    const espnLeagueId = extractLeagueId(leagueLink);
+    if (!espnLeagueId) {
+      toast.error("Paste your ESPN league link or enter its League ID");
+      return;
+    }
+    connectLeague.mutate({
+      espnLeagueId,
+      seasonYear: new Date().getFullYear(),
+      currentWeek: 1,
+    });
+  };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>Please log in to set up your league</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Please sign in to connect a league.</p>
       </div>
     );
   }
@@ -118,148 +91,101 @@ export default function LeagueSetup() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-12">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 mb-8">
+        <div className="max-w-2xl mx-auto space-y-8">
+          <div className="flex items-center gap-3">
             <Trophy className="h-10 w-10 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Fantasy Football Tracker</h1>
-              <p className="text-muted-foreground">Connect your ESPN Fantasy Football league</p>
+              <h1 className="text-3xl font-bold">Connect your ESPN league</h1>
+              <p className="text-muted-foreground">
+                One commissioner setup. Automatic updates for every member.
+              </p>
             </div>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>League Setup</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-5 w-5" /> Paste the league link
+              </CardTitle>
               <CardDescription>
-                Enter your ESPN league information to sync your fantasy football data
+                We extract the League ID and start the first roster, player,
+                matchup, and waiver-wire sync.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  For private leagues, you'll need to provide your ESPN S2 and SWID cookies. 
-                  Find these in your browser's developer tools when logged into ESPN.
-                </AlertDescription>
-              </Alert>
-
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <History className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="font-medium text-foreground">Sync All Historical Seasons</p>
-                    <p className="text-sm text-muted-foreground">Automatically pull all available past seasons for comprehensive stats</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={syncAllSeasons}
-                  onCheckedChange={setSyncAllSeasons}
+              <div className="space-y-2">
+                <Label htmlFor="league-link">
+                  ESPN league link or League ID
+                </Label>
+                <Input
+                  id="league-link"
+                  value={leagueLink}
+                  onChange={event => setLeagueLink(event.target.value)}
+                  onKeyDown={event => event.key === "Enter" && handleConnect()}
+                  placeholder="https://fantasy.espn.com/football/league?leagueId=123456"
                 />
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="leagueId">ESPN League ID *</Label>
-                  <Input
-                    id="leagueId"
-                    placeholder="e.g., 123456"
-                    value={espnLeagueId}
-                    onChange={(e) => setEspnLeagueId(e.target.value)}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Find this in your league URL: fantasy.espn.com/football/league?leagueId=<strong>123456</strong>
-                  </p>
-                </div>
-
-                {!syncAllSeasons && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="seasonYear">Season Year *</Label>
-                      <Input
-                        id="seasonYear"
-                        type="number"
-                        placeholder="2026"
-                        value={seasonYear}
-                        onChange={(e) => setSeasonYear(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="currentWeek">Current Week *</Label>
-                      <Input
-                        id="currentWeek"
-                        type="number"
-                        placeholder="1"
-                        value={currentWeek}
-                        onChange={(e) => setCurrentWeek(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="espnS2">ESPN S2 Cookie (for private leagues)</Label>
-                  <Input
-                    id="espnS2"
-                    type="password"
-                    placeholder="Optional - only needed for private leagues"
-                    value={espnS2}
-                    onChange={(e) => setEspnS2(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="swid">SWID Cookie (for private leagues)</Label>
-                  <Input
-                    id="swid"
-                    type="password"
-                    placeholder="Optional - only needed for private leagues"
-                    value={swid}
-                    onChange={(e) => setSwid(e.target.value)}
-                  />
-                </div>
-              </div>
+              <Alert className="border-primary/30 bg-primary/5">
+                <ShieldCheck className="h-4 w-4" />
+                <AlertTitle>No ESPN passwords or browser cookies</AlertTitle>
+                <AlertDescription>
+                  The league must be viewable to the public. This does not make
+                  it publicly joinable, and ESPN keeps manager lists and
+                  messages private.
+                </AlertDescription>
+              </Alert>
 
               <Button
-                onClick={handleSync}
-                disabled={isLoading}
                 className="w-full"
                 size="lg"
+                onClick={handleConnect}
+                disabled={connectLeague.isPending}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {syncAllSeasons ? "Syncing All Seasons..." : "Syncing League Data..."}
-                  </>
+                {connectLeague.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    {syncAllSeasons ? "Sync All Seasons" : "Sync Single Season"}
-                  </>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                 )}
+                {connectLeague.isPending
+                  ? "Connecting and syncing…"
+                  : "Connect League & Start Auto-Sync"}
               </Button>
-
-              {(singleSeasonSync.isSuccess || multiSeasonSync.isSuccess) && (
-                <Alert className="bg-primary/10 border-primary">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <AlertDescription className="text-foreground">
-                    League synced successfully!
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
 
-          <div className="mt-8 p-6 bg-card rounded-lg border">
-            <h3 className="font-semibold mb-3 text-card-foreground">How to find your ESPN cookies:</h3>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-              <li>Open ESPN Fantasy Football in your browser and log in</li>
-              <li>Open Developer Tools (F12 or right-click → Inspect)</li>
-              <li>Go to the "Application" or "Storage" tab</li>
-              <li>Click on "Cookies" → "https://fantasy.espn.com"</li>
-              <li>Find and copy the values for "espn_s2" and "SWID"</li>
-            </ol>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>If ESPN says the league is private</CardTitle>
+              <CardDescription>
+                The League Manager changes one viewability setting—members do
+                not repeat these steps.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <ol className="list-decimal pl-5 space-y-2 text-muted-foreground">
+                <li>
+                  Open the league in ESPN and choose <strong>Settings</strong>.
+                </li>
+                <li>
+                  Open <strong>Basic Settings → Edit Basic Settings</strong>.
+                </li>
+                <li>
+                  Set public viewability to <strong>Yes</strong>, save, then
+                  return here.
+                </li>
+              </ol>
+              <Button variant="outline" asChild>
+                <a
+                  href="https://support.espn.com/hc/en-us/articles/360000088231-Making-a-Private-League-Viewable-to-the-Public"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  ESPN instructions <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
