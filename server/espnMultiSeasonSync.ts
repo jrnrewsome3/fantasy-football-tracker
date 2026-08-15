@@ -68,7 +68,7 @@ export async function syncAllSeasons(
     success: imported.length > 0,
     message: imported.length
       ? `Imported ${imported.length} archived season${imported.length === 1 ? "" : "s"}.`
-      : "No public archived seasons were found for this ESPN league ID.",
+      : "ESPN did not expose any archived seasons. Archived seasons can have separate privacy settings; the League Manager must make the prior season publicly viewable in ESPN, then retry.",
     seasonsSynced: imported.length,
     seasons: results,
   };

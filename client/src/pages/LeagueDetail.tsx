@@ -33,6 +33,7 @@ import {
   Copy,
   UserCheck,
   History,
+  ExternalLink,
 } from "lucide-react";
 import {
   Select,
@@ -59,6 +60,7 @@ export default function LeagueDetail() {
   const utils = trpc.useUtils();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"single" | "alltime">("alltime");
+  const [showHistoryHelp, setShowHistoryHelp] = useState(false);
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -169,6 +171,7 @@ export default function LeagueDetail() {
       }),
     onSuccess: result => {
       if (result.success) {
+        setShowHistoryHelp(false);
         toast.success(result.message, {
           description:
             "Past standings and weekly matchups are ready to explore.",
@@ -178,6 +181,7 @@ export default function LeagueDetail() {
         utils.league.allMatchups.invalidate({ leagueId });
         utils.league.seasonSummaries.invalidate();
       } else {
+        setShowHistoryHelp(true);
         toast.error("No archived seasons imported", {
           description: result.message,
         });
@@ -387,6 +391,31 @@ export default function LeagueDetail() {
                 </Button>
               )}
             </div>
+
+            {showHistoryHelp && league.userRole === "commissioner" && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <p className="font-semibold text-card-foreground">
+                  ESPN has the archive locked
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  Sign in to ESPN, open the {league.seasonYear - 1} season, then
+                  choose League → Settings → Basic Settings → Edit Basic
+                  Settings and make the league viewable to the public. Return
+                  here and tap Import History again. Your members never need to
+                  do this.
+                </p>
+                <Button variant="outline" size="sm" className="mt-3" asChild>
+                  <a
+                    href={`https://fantasy.espn.com/football/league?leagueId=${league.espnLeagueId}&seasonId=${league.seasonYear - 1}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open {league.seasonYear - 1} ESPN archive
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <Button
