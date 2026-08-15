@@ -36,6 +36,13 @@
       "when": 1786814725031,
       "tag": "0004_remarkable_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786829933577,
+      "tag": "0005_square_black_panther",
+      "breakpoints": true
     }
   ]
 }

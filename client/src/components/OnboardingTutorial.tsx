@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, ArrowRight, ArrowLeft, Trophy, BarChart3, Users, TrendingUp } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  X,
+  ArrowRight,
+  ArrowLeft,
+  Trophy,
+  BarChart3,
+  Users,
+  TrendingUp,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface TutorialStep {
@@ -16,25 +31,29 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: "welcome",
     title: "Welcome to Trouble in Paradise!",
-    description: "Track your ESPN Fantasy Football league stats, view historical records, analyze matchups, and discover insights to dominate your league. Let's get you started!",
+    description:
+      "Track your ESPN Fantasy Football league stats, view historical records, analyze matchups, and discover insights to dominate your league. Let's get you started!",
     icon: <Trophy className="h-8 w-8 text-primary" />,
   },
   {
     id: "connect",
     title: "Connect Your ESPN League",
-    description: "First, you'll need to connect your ESPN Fantasy Football league. Click 'Add League' to enter your league ID and credentials. You can find these in your ESPN league settings.",
+    description:
+      "Connect your ESPN Fantasy Football league with its URL or League ID. No browser cookies or developer tools are needed; the league manager only needs to allow public viewability.",
     icon: <Users className="h-8 w-8 text-primary" />,
   },
   {
     id: "dashboard",
     title: "Your Dashboard",
-    description: "After connecting, your dashboard shows all your leagues. Click 'View League' to see standings, weekly matchups, and team stats. Use the 'Sync Data' button to refresh from ESPN anytime.",
+    description:
+      "Your dashboard shows every league shared with you. Open a league for standings, weekly matchups, available players, weather, and team stats. Commissioners can refresh ESPN anytime.",
     icon: <BarChart3 className="h-8 w-8 text-primary" />,
   },
   {
     id: "features",
     title: "Explore Powerful Features",
-    description: "Navigate between tabs to view Current Week matchups, All-Time Stats with career records, and the Head-to-Head Matrix showing rivalry records. Track your league's history across seasons!",
+    description:
+      "Commissioners can tap Import History once. Then everyone can switch seasons in Matchups, explore career records, and revisit old rivalries across the full archive.",
     icon: <TrendingUp className="h-8 w-8 text-primary" />,
   },
 ];
@@ -101,21 +120,21 @@ export default function OnboardingTutorial() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg px-4"
+            className="fixed inset-x-0 top-1/2 -translate-y-1/2 z-50 mx-auto w-full max-w-lg px-3 sm:px-4"
           >
-            <Card className="border-2 border-primary/20 shadow-2xl">
-              <CardHeader className="relative">
+            <Card className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-2 border-primary/20 shadow-2xl">
+              <CardHeader className="relative p-5 sm:p-6">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-4 top-4"
+                  className="absolute right-2 top-2 sm:right-4 sm:top-4"
                   onClick={handleSkip}
                 >
                   <X className="h-4 w-4" />
                 </Button>
-                
+
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-full bg-primary/10 flex items-center justify-center [&_svg]:h-6 [&_svg]:w-6 sm:[&_svg]:h-8 sm:[&_svg]:w-8">
                     {currentStepData.icon}
                   </div>
                   <div className="flex-1">
@@ -135,13 +154,15 @@ export default function OnboardingTutorial() {
                   </div>
                 </div>
 
-                <CardTitle className="text-2xl">{currentStepData.title}</CardTitle>
-                <CardDescription className="text-base">
+                <CardTitle className="text-xl sm:text-2xl">
+                  {currentStepData.title}
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   {currentStepData.description}
                 </CardDescription>
               </CardHeader>
 
-              <CardFooter className="flex justify-between gap-2">
+              <CardFooter className="flex flex-col-reverse items-stretch gap-2 p-5 pt-0 sm:flex-row sm:justify-between sm:p-6 sm:pt-0">
                 <Button
                   variant="ghost"
                   onClick={handleSkip}
@@ -150,15 +171,19 @@ export default function OnboardingTutorial() {
                   Skip Tutorial
                 </Button>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:justify-end">
                   {currentStep > 0 && (
-                    <Button variant="outline" onClick={handlePrevious}>
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevious}
+                      className="flex-1 sm:flex-none"
+                    >
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back
                     </Button>
                   )}
-                  
-                  <Button onClick={handleNext}>
+
+                  <Button onClick={handleNext} className="flex-1 sm:flex-none">
                     {currentStep < tutorialSteps.length - 1 ? (
                       <>
                         Next
