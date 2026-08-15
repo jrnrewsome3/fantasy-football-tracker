@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 import mysql from "mysql2/promise";
+import path from "node:path";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -33,6 +35,19 @@ export async function getDb() {
     _db = null;
     return null;
   }
+}
+
+/** Apply committed schema migrations before accepting production traffic. */
+export async function runMigrations(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("DATABASE_URL is required to run migrations");
+  }
+
+  const migrationsFolder = path.join(process.cwd(), "drizzle");
+  console.log("[Database] Applying migrations");
+  await migrate(db, { migrationsFolder });
+  console.log("[Database] Migrations complete");
 }
 
 /** Lightweight connectivity check for /api/health */
