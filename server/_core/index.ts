@@ -1,12 +1,14 @@
 import "dotenv/config";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
 import net from "net";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { pingDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,12 +32,54 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
-  // tRPC API
+
+  app.set("trust proxy", 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
+
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests", code: "RATE_LIMITED" },
+  });
+  app.use(generalLimiter);
+
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
+
+  app.get("/api/health", async (_req: Request, res: Response) => {
+    try {
+      const connected = await pingDb();
+      if (!connected) {
+        res.status(503).json({
+          status: "error",
+          db: "disconnected",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+      res.json({
+        status: "ok",
+        db: "connected",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[Health] DB check failed", error);
+      res.status(503).json({
+        status: "error",
+        db: "disconnected",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -43,19 +87,30 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+    console.error(`[ERROR] ${req.method} ${req.path}`, {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      timestamp: new Date().toISOString(),
+    });
+    res.status(500).json({
+      error: "Something went wrong",
+      code: "INTERNAL_ERROR",
+    });
+  });
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
-  }
+  const preferredPort = parseInt(process.env.PORT || "3000");
+  const port =
+    process.env.NODE_ENV === "production"
+      ? preferredPort
+      : await findAvailablePort(preferredPort);
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);

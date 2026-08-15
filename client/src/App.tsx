@@ -15,12 +15,18 @@ import WeeklyRecap from "./pages/WeeklyRecap";
 import TeamHistory from "./pages/TeamHistory";
 import BrowseSeasons from "./pages/BrowseSeasons";
 import OwnerLeaderboard from "./pages/OwnerLeaderboard";
+import SignInPage from "./pages/SignIn";
+import SignUpPage from "./pages/SignUp";
 import OnboardingTutorial from "./components/OnboardingTutorial";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path="/sign-in" component={SignInPage} />
+      <Route path="/sign-in/*" component={SignInPage} />
+      <Route path="/sign-up" component={SignUpPage} />
+      <Route path="/sign-up/*" component={SignUpPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/setup" component={LeagueSetup} />
       <Route path="/faq" component={FAQ} />
@@ -32,7 +38,6 @@ function Router() {
       <Route path={"/seasons/:espnLeagueId"} component={BrowseSeasons} />
       <Route path={"/leaderboard/:espnLeagueId"} component={OwnerLeaderboard} />
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
