@@ -89,24 +89,34 @@ export type InsertLeagueMember = typeof leagueMembers.$inferInsert;
 /**
  * Teams in the fantasy league
  */
-export const teams = mysqlTable("teams", {
-  id: int("id").autoincrement().primaryKey(),
-  leagueId: int("leagueId").notNull(),
-  espnTeamId: int("espnTeamId").notNull(),
-  seasonYear: int("seasonYear").notNull(), // Season year for this team instance
-  name: text("name").notNull(),
-  abbreviation: varchar("abbreviation", { length: 10 }),
-  logoUrl: text("logoUrl"),
-  ownerName: text("ownerName"),
-  userId: int("userId"), // Link to users table if owner has account
-  wins: int("wins").default(0),
-  losses: int("losses").default(0),
-  ties: int("ties").default(0),
-  pointsFor: int("pointsFor").default(0),
-  pointsAgainst: int("pointsAgainst").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const teams = mysqlTable(
+  "teams",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    leagueId: int("leagueId").notNull(),
+    espnTeamId: int("espnTeamId").notNull(),
+    seasonYear: int("seasonYear").notNull(), // Season year for this team instance
+    name: text("name").notNull(),
+    abbreviation: varchar("abbreviation", { length: 10 }),
+    logoUrl: text("logoUrl"),
+    ownerName: text("ownerName"),
+    userId: int("userId"), // Link to users table if owner has account
+    wins: int("wins").default(0),
+    losses: int("losses").default(0),
+    ties: int("ties").default(0),
+    pointsFor: int("pointsFor").default(0),
+    pointsAgainst: int("pointsAgainst").default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    leagueTeamSeasonUnique: uniqueIndex("teams_league_team_season_unique").on(
+      table.leagueId,
+      table.espnTeamId,
+      table.seasonYear
+    ),
+  })
+);
 
 export type Team = typeof teams.$inferSelect;
 export type InsertTeam = typeof teams.$inferInsert;
@@ -159,22 +169,36 @@ export type InsertLeagueAvailablePlayer =
 /**
  * Weekly matchups between teams
  */
-export const matchups = mysqlTable("matchups", {
-  id: int("id").autoincrement().primaryKey(),
-  leagueId: int("leagueId").notNull(),
-  week: int("week").notNull(),
-  seasonYear: int("seasonYear").notNull(),
-  homeTeamId: int("homeTeamId").notNull(),
-  awayTeamId: int("awayTeamId").notNull(),
-  homeScore: int("homeScore").default(0),
-  awayScore: int("awayScore").default(0),
-  homeProjected: int("homeProjected").default(0),
-  awayProjected: int("awayProjected").default(0),
-  isComplete: int("isComplete").default(0), // 0 = false, 1 = true
-  isPlayoffs: int("isPlayoffs").default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const matchups = mysqlTable(
+  "matchups",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    leagueId: int("leagueId").notNull(),
+    week: int("week").notNull(),
+    seasonYear: int("seasonYear").notNull(),
+    homeTeamId: int("homeTeamId").notNull(),
+    awayTeamId: int("awayTeamId").notNull(),
+    homeScore: int("homeScore").default(0),
+    awayScore: int("awayScore").default(0),
+    homeProjected: int("homeProjected").default(0),
+    awayProjected: int("awayProjected").default(0),
+    isComplete: int("isComplete").default(0), // 0 = false, 1 = true
+    isPlayoffs: int("isPlayoffs").default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    leagueWeekSeasonTeamsUnique: uniqueIndex(
+      "matchups_league_week_season_teams_unique"
+    ).on(
+      table.leagueId,
+      table.week,
+      table.seasonYear,
+      table.homeTeamId,
+      table.awayTeamId
+    ),
+  })
+);
 
 export type Matchup = typeof matchups.$inferSelect;
 export type InsertMatchup = typeof matchups.$inferInsert;
@@ -182,19 +206,27 @@ export type InsertMatchup = typeof matchups.$inferInsert;
 /**
  * Player statistics by week
  */
-export const playerStats = mysqlTable("playerStats", {
-  id: int("id").autoincrement().primaryKey(),
-  playerId: int("playerId").notNull(),
-  leagueId: int("leagueId").notNull(),
-  teamId: int("teamId"), // Team that owned the player this week
-  week: int("week").notNull(),
-  seasonYear: int("seasonYear").notNull(),
-  points: int("points").default(0),
-  projectedPoints: int("projectedPoints").default(0),
-  wasStarted: int("wasStarted").default(0), // 0 = benched, 1 = started
-  slotPosition: varchar("slotPosition", { length: 20 }), // QB, RB, WR, etc.
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const playerStats = mysqlTable(
+  "playerStats",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    playerId: int("playerId").notNull(),
+    leagueId: int("leagueId").notNull(),
+    teamId: int("teamId"), // Team that owned the player this week
+    week: int("week").notNull(),
+    seasonYear: int("seasonYear").notNull(),
+    points: int("points").default(0),
+    projectedPoints: int("projectedPoints").default(0),
+    wasStarted: int("wasStarted").default(0), // 0 = benched, 1 = started
+    slotPosition: varchar("slotPosition", { length: 20 }), // QB, RB, WR, etc.
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    leaguePlayerWeekSeasonUnique: uniqueIndex(
+      "playerStats_league_player_week_season_unique"
+    ).on(table.leagueId, table.playerId, table.week, table.seasonYear),
+  })
+);
 
 export type PlayerStat = typeof playerStats.$inferSelect;
 export type InsertPlayerStat = typeof playerStats.$inferInsert;

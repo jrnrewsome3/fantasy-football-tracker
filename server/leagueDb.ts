@@ -269,7 +269,8 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
       .where(
         and(
           eq(teams.leagueId, team.leagueId),
-          eq(teams.espnTeamId, team.espnTeamId)
+          eq(teams.espnTeamId, team.espnTeamId),
+          eq(teams.seasonYear, team.seasonYear)
         )
       )
       .limit(1);
@@ -593,7 +594,18 @@ export async function insertPlayerStat(stat: InsertPlayerStat): Promise<void> {
   if (!db) return;
 
   try {
-    await db.insert(playerStats).values(stat);
+    await db
+      .insert(playerStats)
+      .values(stat)
+      .onDuplicateKeyUpdate({
+        set: {
+          teamId: stat.teamId,
+          points: stat.points,
+          projectedPoints: stat.projectedPoints,
+          wasStarted: stat.wasStarted,
+          slotPosition: stat.slotPosition,
+        },
+      });
   } catch (error) {
     console.error("[LeagueDB] Error inserting player stat:", error);
   }
@@ -738,25 +750,29 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
   const db = await getDb();
   if (!db) return [];
 
-  // Get all league instances (seasons) for this ESPN league
-  const leagueInstances = await db
+  const leagueRows = await db
     .select()
     .from(leagues)
     .where(eq(leagues.espnLeagueId, espnLeagueId))
-    .orderBy(desc(leagues.seasonYear));
+    .limit(1);
+  const league = leagueRows[0];
+  if (!league) return [];
+
+  const importedSeasons = await db
+    .selectDistinct({ seasonYear: teams.seasonYear })
+    .from(teams)
+    .where(eq(teams.leagueId, league.id))
+    .orderBy(desc(teams.seasonYear));
 
   const summaries = [];
 
-  for (const league of leagueInstances) {
+  for (const { seasonYear } of importedSeasons) {
     // Get team count for this season
     const seasonTeams = await db
       .select()
       .from(teams)
       .where(
-        and(
-          eq(teams.leagueId, league.id),
-          eq(teams.seasonYear, league.seasonYear)
-        )
+        and(eq(teams.leagueId, league.id), eq(teams.seasonYear, seasonYear))
       );
 
     // Get matchup count
@@ -766,7 +782,7 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
       .where(
         and(
           eq(matchups.leagueId, league.id),
-          eq(matchups.seasonYear, league.seasonYear)
+          eq(matchups.seasonYear, seasonYear)
         )
       );
 
@@ -779,7 +795,7 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
         : null;
 
     summaries.push({
-      league,
+      league: { ...league, seasonYear },
       teamCount: seasonTeams.length,
       totalGames: seasonMatchups.length,
       topScorer: topScorerTeam

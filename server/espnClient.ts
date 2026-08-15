@@ -105,10 +105,11 @@ export async function fetchLeagueInfo(client: any, seasonId: number) {
  */
 export async function fetchTeams(
   client: any,
-  seasonId: number
+  seasonId: number,
+  scoringPeriodId = 1
 ): Promise<ESPNTeam[]> {
   try {
-    const teams = await client.getTeamsAtWeek({ seasonId, scoringPeriodId: 1 });
+    const teams = await client.getTeamsAtWeek({ seasonId, scoringPeriodId });
     return teams.map((team: any) => ({
       id: team.id,
       name: team.name,

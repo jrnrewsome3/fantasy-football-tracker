@@ -81,7 +81,7 @@ export async function syncLeagueData(
     }
 
     // Fetch and sync teams
-    const espnTeams = await fetchTeams(client, seasonYear);
+    const espnTeams = await fetchTeams(client, seasonYear, detectedWeek);
     let teamsSynced = 0;
 
     for (const espnTeam of espnTeams) {
@@ -112,6 +112,60 @@ export async function syncLeagueData(
     return {
       success: false,
       message: error.message || "Failed to sync league data",
+    };
+  }
+}
+
+/**
+ * Import one archived season into the already-connected league without
+ * changing which season is considered current for automatic refreshes.
+ */
+export async function syncHistoricalSeasonData(
+  espnLeagueId: string,
+  seasonYear: number
+): Promise<SyncResult & { finalWeek?: number }> {
+  try {
+    const league = await getLeagueByEspnId(espnLeagueId);
+    if (!league) return { success: false, message: "League not found" };
+
+    const client = createESPNClient({
+      leagueId: Number(espnLeagueId),
+      seasonId: seasonYear,
+    });
+    const leagueInfo = await fetchLeagueInfo(client, seasonYear);
+    const finalWeek = Math.min(
+      18,
+      Math.max(1, Number(leagueInfo.currentScoringPeriodId || 17))
+    );
+    const espnTeams = await fetchTeams(client, seasonYear, finalWeek);
+
+    for (const espnTeam of espnTeams) {
+      await upsertTeam({
+        leagueId: league.id,
+        espnTeamId: espnTeam.id,
+        seasonYear,
+        name: espnTeam.name,
+        abbreviation: espnTeam.abbreviation,
+        logoUrl: espnTeam.logoURL,
+        ownerName: espnTeam.owners?.[0],
+        wins: espnTeam.wins,
+        losses: espnTeam.losses,
+        ties: espnTeam.ties,
+        pointsFor: espnTeam.pointsFor,
+        pointsAgainst: espnTeam.pointsAgainst,
+      });
+    }
+
+    return {
+      success: true,
+      message: `Imported ${seasonYear} league standings`,
+      teamsSynced: espnTeams.length,
+      finalWeek,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || `The ${seasonYear} season is not available`,
     };
   }
 }

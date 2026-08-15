@@ -32,6 +32,7 @@ import {
   CloudSun,
   Copy,
   UserCheck,
+  History,
 } from "lucide-react";
 import {
   Select,
@@ -47,6 +48,7 @@ import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
 import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LeagueDetail() {
   const { user, loading: authLoading } = useAuth();
@@ -83,16 +85,17 @@ export default function LeagueDetail() {
     }
   );
 
-  // Get unique seasons from all leagues with same ESPN ID
-  const availableSeasons = leagues
-    ? Array.from(
-        new Set(
-          leagues
-            .filter(l => l.espnLeagueId === league?.espnLeagueId)
-            .map(l => l.seasonYear)
-        )
-      ).sort((a, b) => b - a)
-    : [];
+  const { data: seasonSummaries } = trpc.league.seasonSummaries.useQuery(
+    { espnLeagueId: league?.espnLeagueId || "" },
+    { enabled: !!user && !!league?.espnLeagueId }
+  );
+
+  const availableSeasons = Array.from(
+    new Set([
+      ...(seasonSummaries?.map(summary => summary.league.seasonYear) || []),
+      ...(league ? [league.seasonYear] : []),
+    ])
+  ).sort((a, b) => b - a);
 
   // Set default season to current league's season
   useEffect(() => {
@@ -100,20 +103,6 @@ export default function LeagueDetail() {
       setSelectedSeason(league.seasonYear);
     }
   }, [league, selectedSeason]);
-
-  // Update league ID when season changes
-  useEffect(() => {
-    if (selectedSeason && leagues && league) {
-      const seasonLeague = leagues.find(
-        l =>
-          l.espnLeagueId === league.espnLeagueId &&
-          l.seasonYear === selectedSeason
-      );
-      if (seasonLeague && seasonLeague.id !== leagueId) {
-        setLocation(`/league/${seasonLeague.id}`);
-      }
-    }
-  }, [selectedSeason, leagues, league, leagueId, setLocation]);
 
   const { data: transactions, isLoading: transactionsLoading } =
     trpc.league.transactions.useQuery(
@@ -172,6 +161,31 @@ export default function LeagueDetail() {
       currentWeek: Math.max(1, league.currentWeek || 1),
     });
   };
+
+  const historyMutation = trpc.league.syncAllSeasons.useMutation({
+    onMutate: () =>
+      toast.info("Importing the ESPN archive…", {
+        description: "This can take a few minutes for a long-running league.",
+      }),
+    onSuccess: result => {
+      if (result.success) {
+        toast.success(result.message, {
+          description:
+            "Past standings and weekly matchups are ready to explore.",
+        });
+        utils.league.teams.invalidate();
+        utils.league.matchups.invalidate();
+        utils.league.allMatchups.invalidate({ leagueId });
+        utils.league.seasonSummaries.invalidate();
+      } else {
+        toast.error("No archived seasons imported", {
+          description: result.message,
+        });
+      }
+    },
+    onError: error =>
+      toast.error("History import failed", { description: error.message }),
+  });
 
   const { data: exportData, refetch: refetchExport } =
     trpc.league.exportStats.useQuery({ leagueId }, { enabled: false });
@@ -270,7 +284,7 @@ export default function LeagueDetail() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="container py-6">
+        <div className="container py-4 sm:py-6">
           <Button
             variant="ghost"
             onClick={() => setLocation("/dashboard")}
@@ -280,8 +294,26 @@ export default function LeagueDetail() {
             Back to Dashboard
           </Button>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="space-y-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 sm:h-12 sm:w-12">
+                <Trophy className="h-6 w-6 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="break-words text-xl font-bold leading-tight text-card-foreground sm:text-2xl">
+                  {league.name}
+                </h1>
+                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                  {availableSeasons.length > 1
+                    ? `${availableSeasons[availableSeasons.length - 1]}–${availableSeasons[0]} archive`
+                    : `${league.seasonYear} season`}{" "}
+                  • Week {league.currentWeek} of {league.totalWeeks}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <ThemeToggle />
               {teams && teams.length > 0 && (
                 <Select
                   value={league.myEspnTeamId?.toString() || ""}
@@ -292,14 +324,14 @@ export default function LeagueDetail() {
                     })
                   }
                 >
-                  <SelectTrigger className="w-[180px] h-9">
-                    <UserCheck className="mr-2 h-4 w-4" />
+                  <SelectTrigger className="w-full sm:w-[190px]">
+                    <UserCheck className="h-4 w-4" />
                     <SelectValue placeholder="Choose my team" />
                   </SelectTrigger>
                   <SelectContent>
                     {teams.map(team => (
                       <SelectItem
-                        key={team.espnTeamId}
+                        key={`${team.seasonYear}-${team.espnTeamId}`}
                         value={team.espnTeamId.toString()}
                       >
                         {team.name}
@@ -321,102 +353,97 @@ export default function LeagueDetail() {
                     });
                   }}
                 >
-                  <Copy className="mr-2 h-4 w-4" /> Invite Members
+                  <Copy className="h-4 w-4" /> Invite Members
                 </Button>
               )}
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Trophy className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-card-foreground">
-                  {league.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Viewing Data from{" "}
-                  <span className="font-semibold text-primary">
-                    {availableSeasons[availableSeasons.length - 1] || 2018}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-semibold text-primary">
-                    {availableSeasons[0] || new Date().getFullYear()}
-                  </span>{" "}
-                  • Week {league.currentWeek} of {league.totalWeeks}
-                </p>
-              </div>
+              {league.userRole === "commissioner" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    historyMutation.mutate({
+                      espnLeagueId: league.espnLeagueId,
+                    })
+                  }
+                  disabled={historyMutation.isPending}
+                >
+                  <History
+                    className={`h-4 w-4 ${historyMutation.isPending ? "animate-spin" : ""}`}
+                  />
+                  {historyMutation.isPending ? "Importing…" : "Import History"}
+                </Button>
+              )}
+              {league.userRole === "commissioner" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSync}
+                  disabled={syncMutation.isPending}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`}
+                  />
+                  {syncMutation.isPending ? "Syncing…" : "Sync Now"}
+                </Button>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(`/league/${leagueId}/recap`)}
+              >
+                <FileText className="h-4 w-4" /> Weekly Recap
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(`/league/${leagueId}/compare`)}
+              >
+                <GitCompare className="h-4 w-4" /> Compare
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(`/league/${leagueId}/highlights`)}
+              >
+                <Trophy className="h-4 w-4" /> Highlights
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <Download className="h-4 w-4" /> Export
+              </Button>
               {availableSeasons.length > 1 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background">
+                <div className="col-span-2 flex items-center gap-2 rounded-md border bg-background px-3 sm:w-auto">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Season:</span>
                   <Select
                     value={
                       selectedSeason?.toString() || league.seasonYear.toString()
                     }
-                    onValueChange={value => setSelectedSeason(parseInt(value))}
+                    onValueChange={value => {
+                      setSelectedSeason(parseInt(value));
+                      setViewMode("single");
+                    }}
                   >
-                    <SelectTrigger className="w-[120px] h-8">
+                    <SelectTrigger className="h-8 flex-1 border-0 shadow-none sm:w-[145px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {availableSeasons.map(season => (
                         <SelectItem key={season} value={season.toString()}>
-                          {season}
+                          {season} season
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLocation(`/league/${leagueId}/recap`)}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Weekly Recap
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLocation(`/league/${leagueId}/compare`)}
-                >
-                  <GitCompare className="mr-2 h-4 w-4" />
-                  Compare Teams
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLocation(`/league/${leagueId}/highlights`)}
-                >
-                  <Trophy className="mr-2 h-4 w-4" />
-                  Highlights
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export PDF
-                </Button>
-                {league.userRole === "commissioner" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSync}
-                    disabled={syncMutation.isPending}
-                  >
-                    <RefreshCw
-                      className={`mr-2 h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`}
-                    />
-                    {syncMutation.isPending ? "Syncing..." : "Sync Now"}
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container py-8">
+      <div className="container py-6 sm:py-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>

@@ -34,7 +34,10 @@ function Router() {
       <Route path={"/league/:id/highlights"} component={HistoricalHighlights} />
       <Route path={"/league/:id/compare"} component={TeamComparison} />
       <Route path={"/league/:id/recap"} component={WeeklyRecap} />
-      <Route path={"/team/:espnTeamId/:espnLeagueId/history"} component={TeamHistory} />
+      <Route
+        path={"/team/:espnTeamId/:espnLeagueId/history"}
+        component={TeamHistory}
+      />
       <Route path={"/seasons/:espnLeagueId"} component={BrowseSeasons} />
       <Route path={"/leaderboard/:espnLeagueId"} component={OwnerLeaderboard} />
       <Route path={"/404"} component={NotFound} />
@@ -46,7 +49,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
           <OnboardingTutorial />

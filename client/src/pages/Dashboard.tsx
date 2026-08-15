@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -162,7 +163,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Trophy className="h-8 w-8 text-primary" />
               <div>
@@ -174,7 +175,8 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+              <ThemeToggle />
               <Button
                 variant="outline"
                 onClick={() => setLocation("/faq")}
