@@ -28,6 +28,9 @@ import {
   teamAllTimeStats,
   TeamAllTimeStat,
   InsertTeamAllTimeStat,
+  leagueSeasons,
+  LeagueSeason,
+  InsertLeagueSeason,
 } from "../drizzle/schema";
 import { getDb } from "./db";
 
@@ -252,6 +255,8 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
           abbreviation: team.abbreviation,
           logoUrl: team.logoUrl,
           ownerName: team.ownerName,
+          franchiseKey: team.franchiseKey,
+          historySource: team.historySource,
           userId: team.userId,
           wins: team.wins,
           losses: team.losses,
@@ -351,16 +356,17 @@ export async function getTeamsByEspnLeagueAllTime(
     .innerJoin(leagues, eq(teams.leagueId, leagues.id))
     .where(eq(leagues.espnLeagueId, espnLeagueId));
 
-  // Group by espnTeamId and aggregate career stats
-  const teamMap = new Map<number, Team>();
+  // Group by a commissioner-cleaned franchise key when available. Public ESPN
+  // data falls back to the durable ESPN team ID.
+  const teamMap = new Map<string, Team>();
 
   for (const row of allTeams) {
     const team = row.teams;
-    const existing = teamMap.get(team.espnTeamId);
+    const franchiseKey = team.franchiseKey || `espn:${team.espnTeamId}`;
+    const existing = teamMap.get(franchiseKey);
 
     if (!existing) {
-      // First time seeing this espnTeamId, use this team
-      teamMap.set(team.espnTeamId, { ...team });
+      teamMap.set(franchiseKey, { ...team });
     } else {
       // Aggregate career stats for same espnTeamId
       existing.wins = (existing.wins || 0) + (team.wins || 0);
@@ -370,11 +376,12 @@ export async function getTeamsByEspnLeagueAllTime(
       existing.pointsAgainst =
         (existing.pointsAgainst || 0) + (team.pointsAgainst || 0);
 
-      // Use the most recent team name (higher id = more recent)
-      if (team.id > existing.id) {
+      // Use the most recent season's team identity, regardless of import order.
+      if (team.seasonYear > existing.seasonYear) {
         existing.name = team.name;
         existing.logoUrl = team.logoUrl;
         existing.ownerName = team.ownerName;
+        existing.seasonYear = team.seasonYear;
       }
     }
   }
@@ -727,14 +734,18 @@ export async function getTeamHistory(
   const leagueIds = leagueInstances.map(l => l.id);
   if (leagueIds.length === 0) return [];
 
-  // Get team data for all seasons
-  const teamHistory = await db
+  const allLeagueTeams = await db
     .select()
     .from(teams)
-    .where(eq(teams.espnTeamId, espnTeamId))
-    .orderBy(desc(teams.seasonYear));
-
-  return teamHistory.filter(t => leagueIds.includes(t.leagueId));
+    .where(eq(teams.leagueId, leagueIds[0]));
+  const reference = allLeagueTeams.find(team => team.espnTeamId === espnTeamId);
+  if (!reference) return [];
+  const franchiseKey = reference.franchiseKey || `espn:${reference.espnTeamId}`;
+  return allLeagueTeams
+    .filter(
+      team => (team.franchiseKey || `espn:${team.espnTeamId}`) === franchiseKey
+    )
+    .sort((a, b) => b.seasonYear - a.seasonYear);
 }
 
 // ============ SEASON SUMMARIES ============
@@ -745,6 +756,7 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
     teamCount: number;
     totalGames: number;
     topScorer: { name: string; points: number } | null;
+    coverage: LeagueSeason | null;
   }>
 > {
   const db = await getDb();
@@ -765,6 +777,14 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
     .orderBy(desc(teams.seasonYear));
 
   const summaries = [];
+
+  const coverageRows = await db
+    .select()
+    .from(leagueSeasons)
+    .where(eq(leagueSeasons.leagueId, league.id));
+  const coverageByYear = new Map(
+    coverageRows.map(coverage => [coverage.seasonYear, coverage])
+  );
 
   for (const { seasonYear } of importedSeasons) {
     // Get team count for this season
@@ -804,10 +824,33 @@ export async function getSeasonSummaries(espnLeagueId: string): Promise<
             points: topScorerTeam.pointsFor || 0,
           }
         : null,
+      coverage: coverageByYear.get(seasonYear) || null,
     });
   }
 
   return summaries;
+}
+
+export async function upsertLeagueSeason(
+  season: InsertLeagueSeason
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .insert(leagueSeasons)
+    .values(season)
+    .onDuplicateKeyUpdate({
+      set: {
+        championName: season.championName,
+        runnerUpName: season.runnerUpName,
+        thirdPlaceName: season.thirdPlaceName,
+        standingsComplete: season.standingsComplete,
+        matchupsComplete: season.matchupsComplete,
+        ownershipComplete: season.ownershipComplete,
+        source: season.source,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 // ============ OWNER LEADERBOARD ============
@@ -842,7 +885,7 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
       }
     >();
 
-    for (const { teams: team, leagues: league } of allTeams) {
+    for (const { teams: team } of allTeams) {
       if (!team.ownerName) continue;
 
       const existing = ownerStatsMap.get(team.ownerName);
@@ -863,13 +906,13 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
         // Track best season
         if (wins > existing.bestSeasonWins) {
           existing.bestSeasonWins = wins;
-          existing.bestSeasonYear = league.seasonYear;
+          existing.bestSeasonYear = team.seasonYear;
         }
 
         // Track worst season
         if (wins < existing.worstSeasonWins) {
           existing.worstSeasonWins = wins;
-          existing.worstSeasonYear = league.seasonYear;
+          existing.worstSeasonYear = team.seasonYear;
         }
       } else {
         ownerStatsMap.set(team.ownerName, {
@@ -881,9 +924,9 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
           totalPointsAgainst: pa,
           seasonsPlayed: 1,
           bestSeasonWins: wins,
-          bestSeasonYear: league.seasonYear,
+          bestSeasonYear: team.seasonYear,
           worstSeasonWins: wins,
-          worstSeasonYear: league.seasonYear,
+          worstSeasonYear: team.seasonYear,
         });
       }
     }

@@ -87,6 +87,91 @@ export const appRouter = router({
         return result;
       }),
 
+    // Import sanitized standings exported from an authenticated ESPN History
+    // page. Passwords and ESPN session cookies are never included.
+    importHistoryFile: protectedProcedure
+      .input(
+        z.object({
+          leagueId: z.string().trim().min(1).max(64),
+          source: z.string().trim().max(64).optional(),
+          standingsComplete: z.boolean().optional(),
+          matchupsComplete: z.boolean().optional(),
+          seasons: z
+            .array(
+              z.object({
+                year: z.number().int().min(2000).max(2100),
+                champion: z.string().trim().max(200).nullable().optional(),
+                runnerUp: z.string().trim().max(200).nullable().optional(),
+                thirdPlace: z.string().trim().max(200).nullable().optional(),
+                teams: z
+                  .array(
+                    z.object({
+                      rank: z.number().int().min(1).max(32),
+                      teamName: z.string().trim().min(1).max(200),
+                      wins: z.number().int().min(0).max(30),
+                      losses: z.number().int().min(0).max(30),
+                      ties: z.number().int().min(0).max(30).optional(),
+                      ownerNames: z
+                        .array(z.string().trim().min(1).max(120))
+                        .max(6)
+                        .optional(),
+                      franchiseKey: z.string().trim().max(120).optional(),
+                    })
+                  )
+                  .min(2)
+                  .max(32),
+              })
+            )
+            .min(1)
+            .max(20),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { getLeagueByEspnId } = await import("./leagueDb");
+        const { requireCommissioner } = await import("./leagueAccess");
+        const league = await getLeagueByEspnId(input.leagueId);
+        if (!league) throw new Error("League not found");
+        await requireCommissioner(league.id, ctx.user.id);
+        const { importManualHistory } = await import("./manualHistoryImport");
+        return importManualHistory(input);
+      }),
+
+    historicalOwnership: protectedProcedure
+      .input(z.object({ leagueId: z.number().int().positive() }))
+      .query(async ({ input, ctx }) => {
+        const { requireCommissioner } = await import("./leagueAccess");
+        await requireCommissioner(input.leagueId, ctx.user.id);
+        const { getHistoricalOwnershipRows } = await import(
+          "./manualHistoryImport"
+        );
+        return getHistoricalOwnershipRows(input.leagueId);
+      }),
+
+    updateHistoricalOwnership: protectedProcedure
+      .input(
+        z.object({
+          leagueId: z.number().int().positive(),
+          assignments: z
+            .array(
+              z.object({
+                teamId: z.number().int().positive(),
+                ownerNames: z.array(z.string().trim().min(1).max(120)).max(6),
+                franchiseKey: z.string().trim().min(1).max(120),
+              })
+            )
+            .min(1)
+            .max(500),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { requireCommissioner } = await import("./leagueAccess");
+        await requireCommissioner(input.leagueId, ctx.user.id);
+        const { updateHistoricalOwnership } = await import(
+          "./manualHistoryImport"
+        );
+        return updateHistoricalOwnership(input.leagueId, input.assignments);
+      }),
+
     availablePlayers: protectedProcedure
       .input(
         z.object({

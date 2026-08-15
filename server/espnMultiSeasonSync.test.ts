@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getLeagueByEspnId = vi.fn();
+const upsertLeagueSeason = vi.fn();
 const syncHistoricalSeasonData = vi.fn();
 const syncWeekMatchups = vi.fn();
 
-vi.mock("./leagueDb", () => ({ getLeagueByEspnId }));
+vi.mock("./leagueDb", () => ({ getLeagueByEspnId, upsertLeagueSeason }));
 vi.mock("./espnSync", () => ({
   syncHistoricalSeasonData,
   syncWeekMatchups,

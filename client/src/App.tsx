@@ -17,6 +17,7 @@ import BrowseSeasons from "./pages/BrowseSeasons";
 import OwnerLeaderboard from "./pages/OwnerLeaderboard";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
+import HistoryOwnership from "./pages/HistoryOwnership";
 import OnboardingTutorial from "./components/OnboardingTutorial";
 
 function Router() {
@@ -34,6 +35,10 @@ function Router() {
       <Route path={"/league/:id/highlights"} component={HistoricalHighlights} />
       <Route path={"/league/:id/compare"} component={TeamComparison} />
       <Route path={"/league/:id/recap"} component={WeeklyRecap} />
+      <Route
+        path={"/league/:id/history-ownership"}
+        component={HistoryOwnership}
+      />
       <Route
         path={"/team/:espnTeamId/:espnLeagueId/history"}
         component={TeamHistory}

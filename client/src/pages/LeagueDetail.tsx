@@ -34,6 +34,8 @@ import {
   UserCheck,
   History,
   ExternalLink,
+  Upload,
+  UsersRound,
 } from "lucide-react";
 import {
   Select,
@@ -42,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
 import WeeklyMatchups from "./WeeklyMatchups";
@@ -190,6 +192,42 @@ export default function LeagueDetail() {
     onError: error =>
       toast.error("History import failed", { description: error.message }),
   });
+
+  const historyFileMutation = trpc.league.importHistoryFile.useMutation({
+    onSuccess: result => {
+      if (!result.success) {
+        toast.error("No history was imported", { description: result.message });
+        return;
+      }
+      toast.success(result.message, {
+        description: result.warnings.length
+          ? result.warnings.join(" ")
+          : "The archived standings are ready to review.",
+      });
+      utils.league.teams.invalidate();
+      utils.league.allMatchups.invalidate({ leagueId });
+      utils.league.seasonSummaries.invalidate();
+      utils.league.list.invalidate();
+    },
+    onError: error =>
+      toast.error("History file import failed", { description: error.message }),
+  });
+
+  const handleHistoryFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text());
+      if (payload.leagueId !== league?.espnLeagueId) {
+        toast.error("This history file belongs to a different ESPN league.");
+        return;
+      }
+      historyFileMutation.mutate(payload);
+    } catch {
+      toast.error("That is not a valid history JSON file.");
+    }
+  };
 
   const { data: exportData, refetch: refetchExport } =
     trpc.league.exportStats.useQuery({ leagueId }, { enabled: false });
@@ -377,6 +415,42 @@ export default function LeagueDetail() {
                   {historyMutation.isPending ? "Importing…" : "Import History"}
                 </Button>
               )}
+              {league.userRole === "commissioner" && (
+                <label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    disabled={historyFileMutation.isPending}
+                  >
+                    <span className="w-full cursor-pointer">
+                      <Upload className="h-4 w-4" />
+                      {historyFileMutation.isPending
+                        ? "Uploading…"
+                        : "Upload History File"}
+                    </span>
+                  </Button>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={handleHistoryFile}
+                    disabled={historyFileMutation.isPending}
+                  />
+                </label>
+              )}
+              {league.userRole === "commissioner" &&
+                availableSeasons.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setLocation(`/league/${leagueId}/history-ownership`)
+                    }
+                  >
+                    <UsersRound className="h-4 w-4" /> Clean Up History
+                  </Button>
+                )}
               {league.userRole === "commissioner" && (
                 <Button
                   variant="outline"
@@ -880,7 +954,10 @@ export default function LeagueDetail() {
           </TabsContent>
 
           <TabsContent value="alltime" className="space-y-4">
-            <AllTimeStats leagueId={leagueId} />
+            <AllTimeStats
+              leagueId={leagueId}
+              espnLeagueId={league.espnLeagueId}
+            />
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-4">
