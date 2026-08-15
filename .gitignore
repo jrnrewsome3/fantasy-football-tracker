@@ -14,9 +14,6 @@ build/
 .env.test.local
 .env.production.local
 
-# Manus AI agent files
-.manus/
-
 # IDE and editor files
 .vscode/
 .idea/

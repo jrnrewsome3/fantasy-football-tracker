@@ -27,7 +27,7 @@ The 15% breaks down into these six pillars:
 ## Lessons Learned (From This Session)
 
 ### Lesson 1: Your repo already had the right structure
-Manus scaffold gave you `client/`, `server/`, `shared/`, and `drizzle/` — a monorepo pattern that scales well. You did not need to restructure anything. The 15% is hardening, not rebuilding.
+The repo already had a solid monorepo layout (`client/`, `server/`, `shared/`, `drizzle/`). You did not need to restructure anything. The 15% is hardening, not rebuilding.
 
 ### Lesson 2: GitHub Desktop is your sync tool, browser is your workflow tool
 - **GitHub Desktop** = pulls, commits, pushes, branch switching. Use it every time you make local code changes.

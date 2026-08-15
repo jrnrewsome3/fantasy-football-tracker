@@ -2,13 +2,15 @@
 
 A full-stack web application for tracking, analyzing, and visualizing ESPN Fantasy Football league data across multiple seasons. Built for the **Trouble in Paradise** league, this app syncs historical data from 2018 to present and provides rich analytics, AI-powered insights, and a clean dashboard experience.
 
-**Live URL:** [fantasyft-emzkrtjy.manus.space](https://fantasyft-emzkrtjy.manus.space)
+**Production target:** self-hosted on Railway (or any Node host) with **Clerk** auth and **OpenAI** for AI features.
+
+See [`DEPLOY.md`](./DEPLOY.md) for the production deploy checklist.
 
 ---
 
 ## Overview
 
-This application connects directly to ESPN's Fantasy Football API to pull league data — teams, matchups, standings, player stats, and transactions — and stores it in a persistent database for fast querying and historical analysis. Users authenticate via Manus OAuth, add their ESPN league credentials, and can then explore everything from weekly matchups to all-time standings.
+This application connects directly to ESPN's Fantasy Football API to pull league data — teams, matchups, standings, player stats, and transactions — and stores it in a persistent database for fast querying and historical analysis. Users authenticate via **Clerk**, add their ESPN league credentials, and can then explore everything from weekly matchups to all-time standings.
 
 ---
 
@@ -92,11 +94,11 @@ This application connects directly to ESPN's Fantasy Football API to pull league
 | Routing | Wouter |
 | API Layer | tRPC 11 (end-to-end type safety) |
 | Backend | Express 4, Node.js 22 |
-| Database | MySQL / TiDB (via Drizzle ORM) |
-| Auth | Manus OAuth (session cookies + JWT) |
+| Database | MySQL (via Drizzle ORM + connection pool) |
+| Auth | Clerk (session JWT → Bearer token) |
 | ESPN Data | espn-fantasy-football-api (Node production build) |
-| AI | Built-in LLM via `invokeLLM` helper |
-| File Storage | S3-compatible via `storagePut` / `storageGet` |
+| AI | OpenAI-compatible chat completions (`OPENAI_API_KEY`) |
+| Hosting | Railway / Docker (`Dockerfile`, `railway.toml`) |
 | Testing | Vitest |
 
 ---
@@ -105,7 +107,7 @@ This application connects directly to ESPN's Fantasy Football API to pull league
 
 | Table | Purpose |
 |---|---|
-| `users` | Authenticated user accounts (Manus OAuth) |
+| `users` | Authenticated user accounts (Clerk subject id in `openId`) |
 | `leagues` | ESPN league configurations and credentials |
 | `teams` | Team records per season, linked to leagues |
 | `players` | Player registry with position and NFL team |
@@ -187,6 +189,8 @@ shared/
 | Route | Page | Description |
 |---|---|---|
 | `/` | Home | Landing page with login CTA |
+| `/sign-in` | SignIn | Clerk sign-in |
+| `/sign-up` | SignUp | Clerk sign-up |
 | `/dashboard` | Dashboard | League overview and quick stats |
 | `/setup` | LeagueSetup | Add a new ESPN league |
 | `/faq` | FAQ | Help and frequently asked questions |
@@ -202,21 +206,22 @@ shared/
 
 ## Environment Variables
 
-All environment variables are injected by the Manus platform. Do not commit `.env` files.
+Copy `.env.example` to `.env`. Do not commit real secrets.
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | MySQL/TiDB connection string |
-| `JWT_SECRET` | Session cookie signing secret |
-| `VITE_APP_ID` | Manus OAuth application ID |
-| `OAUTH_SERVER_URL` | Manus OAuth backend base URL |
-| `VITE_OAUTH_PORTAL_URL` | Manus login portal URL (frontend) |
-| `OWNER_OPEN_ID` | Owner's Manus user ID |
-| `OWNER_NAME` | Owner's display name |
-| `BUILT_IN_FORGE_API_URL` | Manus built-in API base URL (server) |
-| `BUILT_IN_FORGE_API_KEY` | Manus built-in API key (server) |
-| `VITE_FRONTEND_FORGE_API_KEY` | Manus built-in API key (frontend) |
-| `VITE_FRONTEND_FORGE_API_URL` | Manus built-in API URL (frontend) |
+| `DATABASE_URL` | MySQL connection string |
+| `DB_POOL_SIZE` | Optional pool size (default 10) |
+| `JWT_SECRET` | Reserved/legacy secret (keep set) |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (browser) |
+| `CLERK_SECRET_KEY` | Clerk secret key (server) |
+| `OWNER_OPEN_ID` | Optional Clerk user id granted `admin` |
+| `OPENAI_API_KEY` | OpenAI API key for AI features |
+| `OPENAI_API_URL` | Chat completions base (default OpenAI) |
+| `OPENAI_MODEL` | Model id (default `gpt-4o-mini`) |
+| `PORT` | Listen port (default 3000) |
+
+Full deploy steps: [`DEPLOY.md`](./DEPLOY.md).
 
 ---
 
@@ -226,7 +231,7 @@ All environment variables are injected by the Manus platform. Do not commit `.en
 # Install dependencies
 pnpm install
 
-# Copy env template and fill in values (required to run the app locally)
+# Copy env template and fill in Clerk + DB + OpenAI values
 cp .env.example .env
 
 # Push database schema changes
@@ -237,6 +242,13 @@ pnpm dev
 
 # Run all tests
 pnpm test
+```
+
+Production start after `pnpm build`:
+
+```bash
+pnpm start
+# Health: GET /api/health
 ```
 
 ---

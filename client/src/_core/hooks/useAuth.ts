@@ -1,6 +1,7 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
+import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import { useCallback, useEffect, useMemo } from "react";
 
 type UseAuthOptions = {
@@ -12,10 +13,13 @@ export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
     options ?? {};
   const utils = trpc.useUtils();
+  const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: clerkLoaded && Boolean(isSignedIn),
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -32,27 +36,32 @@ export function useAuth(options?: UseAuthOptions) {
         error instanceof TRPCClientError &&
         error.data?.code === "UNAUTHORIZED"
       ) {
-        return;
+        // continue to Clerk sign-out
+      } else if (error) {
+        console.warn("[Auth] logout mutation failed", error);
       }
-      throw error;
     } finally {
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
+      await signOut({ redirectUrl: "/" });
     }
-  }, [logoutMutation, utils]);
+  }, [logoutMutation, utils, signOut]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    const loading =
+      !clerkLoaded ||
+      (Boolean(isSignedIn) && meQuery.isLoading) ||
+      logoutMutation.isPending;
+
     return {
-      user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      user: isSignedIn ? (meQuery.data ?? null) : null,
+      loading,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(isSignedIn && meQuery.data),
     };
   }, [
+    clerkLoaded,
+    isSignedIn,
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
@@ -62,17 +71,19 @@ export function useAuth(options?: UseAuthOptions) {
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    if (!clerkLoaded || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
+    if (window.location.pathname.startsWith("/sign-in")) return;
+    if (window.location.pathname.startsWith("/sign-up")) return;
 
-    window.location.href = redirectPath
+    window.location.href = redirectPath;
   }, [
     redirectOnUnauthenticated,
     redirectPath,
     logoutMutation.isPending,
-    meQuery.isLoading,
+    clerkLoaded,
     state.user,
   ]);
 

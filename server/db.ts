@@ -1,21 +1,55 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type Db = MySql2Database<Record<string, never>>;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+let _pool: mysql.Pool | null = null;
+let _db: Db | null = null;
+
+function getPool() {
+  if (_pool) return _pool;
+  if (!process.env.DATABASE_URL) return null;
+
+  _pool = mysql.createPool(process.env.DATABASE_URL);
+  return _pool;
+}
+
+/** Lazily create a pooled Drizzle client so local tooling can run without a DB. */
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+  if (_db) return _db;
+
+  const pool = getPool();
+  if (!pool) return null;
+
+  try {
+    // mysql2/promise Pool is the supported client for drizzle-orm/mysql2
+    _db = drizzle(pool) as Db;
+    return _db;
+  } catch (error) {
+    console.warn("[Database] Failed to connect:", error);
+    _db = null;
+    return null;
   }
-  return _db;
+}
+
+/** Lightweight connectivity check for /api/health */
+export async function pingDb(): Promise<boolean> {
+  try {
+    const pool = getPool();
+    if (!pool) return false;
+    const conn = await pool.getConnection();
+    try {
+      await conn.query("SELECT 1");
+      return true;
+    } finally {
+      conn.release();
+    }
+  } catch {
+    return false;
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -56,8 +90,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -84,9 +118,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
-
-// TODO: add feature queries here as your schema grows.
