@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -13,106 +14,600 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
-  Trophy,
   ArrowLeft,
-  Sparkles,
   BarChart3,
-  Users,
-  TrendingUp,
+  Bot,
+  CheckCircle2,
+  CloudSun,
+  History,
   RefreshCw,
   Shield,
+  Smartphone,
+  Sparkles,
+  Trophy,
+  Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
+
+type FaqItem = {
+  id: string;
+  question: string;
+  answer: ReactNode;
+};
+
+function FaqSection({ title, items }: { title: string; items: FaqItem[] }) {
+  return (
+    <Card className="mb-6 sm:mb-8">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Accordion type="single" collapsible className="w-full">
+          {items.map(item => (
+            <AccordionItem key={item.id} value={item.id}>
+              <AccordionTrigger className="text-left">
+                {item.question}
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 text-muted-foreground">
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </CardContent>
+    </Card>
+  );
+}
+
+const gettingStarted: FaqItem[] = [
+  {
+    id: "setup-who",
+    question: "Who needs to set up the league?",
+    answer: (
+      <>
+        <p>
+          One league commissioner connects the ESPN league. The commissioner
+          controls syncing, history imports, invitations, and historical
+          cleanup. League members only create an app account, enter the invite
+          code, and choose their current ESPN team.
+        </p>
+        <p>
+          Members never need ESPN developer tools, browser cookies, or the
+          commissioner's ESPN login.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "setup-connect",
+    question: "How does the commissioner connect an ESPN league?",
+    answer: (
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>Sign in to this app and select Add League.</li>
+        <li>Paste the ESPN league URL or enter the League ID.</li>
+        <li>
+          If ESPN blocks the connection, enable public viewability in ESPN's
+          Basic Settings and try again.
+        </li>
+        <li>Select Connect League &amp; Start Auto-Sync.</li>
+        <li>Open the league and use Invite Members to copy the invite code.</li>
+      </ol>
+    ),
+  },
+  {
+    id: "setup-id",
+    question: "Where is the ESPN League ID?",
+    answer: (
+      <>
+        <p>The League ID is the number after leagueId= in the ESPN URL:</p>
+        <p className="break-all rounded bg-muted p-3 font-mono text-xs">
+          https://fantasy.espn.com/football/league?leagueId=
+          <span className="font-bold text-primary">123456</span>
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "setup-public",
+    question: "Does public viewability let strangers join my ESPN league?",
+    answer: (
+      <p>
+        No. Public viewability gives the app read-only access to the league data
+        ESPN exposes. It does not make the ESPN league publicly joinable and
+        does not let this app change lineups, rosters, settings, or
+        transactions.
+      </p>
+    ),
+  },
+  {
+    id: "setup-join",
+    question: "How do league members join?",
+    answer: (
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>Create an account or sign in.</li>
+        <li>Select Join Team League on the dashboard.</li>
+        <li>Enter the invite code provided by the commissioner.</li>
+        <li>Open the league and select Choose my team.</li>
+      </ol>
+    ),
+  },
+  {
+    id: "setup-multiple",
+    question: "Can one person belong to multiple leagues?",
+    answer: (
+      <p>
+        Yes. Each connected or joined league appears separately on the
+        dashboard. The same account can be a commissioner in one league and a
+        member in another.
+      </p>
+    ),
+  },
+];
+
+const currentSeason: FaqItem[] = [
+  {
+    id: "current-sync",
+    question: "How often does current-season data update?",
+    answer: (
+      <>
+        <p>
+          Connected leagues are checked automatically and become due for a new
+          sync every 30 minutes. The commissioner can select Sync Now when an
+          immediate refresh is needed.
+        </p>
+        <p>
+          ESPN can take additional time to finalize scores, injuries, waiver
+          availability, and stat corrections.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "current-matchups",
+    question: "Where are the weekly matchups?",
+    answer: (
+      <p>
+        Open the league and select Matchups. Use the week selector to move
+        through the current season. Scores and projections appear when ESPN
+        supplies them.
+      </p>
+    ),
+  },
+  {
+    id: "current-players",
+    question: "What does Available Players show?",
+    answer: (
+      <p>
+        Available Players is a league-specific waiver-wire view. It shows
+        players ESPN reports as available, including position, NFL team, status,
+        percent owned, and percent started. It is decision support only; waiver
+        claims and roster moves still happen in ESPN.
+      </p>
+    ),
+  },
+  {
+    id: "current-weather",
+    question: "How does Game Weather work?",
+    answer: (
+      <p>
+        Game Weather combines the NFL schedule with National Weather Service
+        forecasts. Outdoor forecasts normally populate within seven days of
+        kickoff. Indoor games are identified without an outdoor forecast.
+      </p>
+    ),
+  },
+  {
+    id: "current-tools",
+    question: "What are Weekly Recap, Compare, Highlights, and AI Assistant?",
+    answer: (
+      <ul className="list-disc space-y-2 pl-5">
+        <li>
+          <strong>Weekly Recap:</strong> summarizes completed matchup results,
+          close games, top scores, and notable outcomes.
+        </li>
+        <li>
+          <strong>Compare:</strong> places two teams side by side using the data
+          currently stored for the league.
+        </li>
+        <li>
+          <strong>Highlights:</strong> surfaces notable performances and league
+          records when score data is available.
+        </li>
+        <li>
+          <strong>AI Assistant:</strong> answers questions using the league data
+          available in the app. Its answer is limited by the completeness of
+          that data.
+        </li>
+      </ul>
+    ),
+  },
+  {
+    id: "current-read-only",
+    question: "Can the app set lineups or make roster moves in ESPN?",
+    answer: (
+      <p>
+        No. The app is intentionally read-only. It helps members review
+        standings, matchups, available players, weather, and trends, but each
+        manager makes final lineup, waiver, trade, and roster decisions in ESPN.
+      </p>
+    ),
+  },
+];
+
+const historicalData: FaqItem[] = [
+  {
+    id: "history-import",
+    question: "How does a commissioner add past seasons?",
+    answer: (
+      <>
+        <p>
+          Start with Import History. The app asks ESPN for archived seasons tied
+          to the same League ID. ESPN does not expose every private archive in
+          the same way, so results can vary by season.
+        </p>
+        <p>
+          When ESPN will not return an archive, the commissioner can use Upload
+          History File with a sanitized JSON file containing final standings and
+          champions. League members do not repeat either step.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "history-partial",
+    question: "What does “final standings imported” mean?",
+    answer: (
+      <p>
+        It means the season includes team names, final wins and losses, finish
+        order, and championship results, but not the individual weekly scores.
+        The season contributes to career W-L records and championship history.
+        Score-based features remain unavailable for that season.
+      </p>
+    ),
+  },
+  {
+    id: "history-missing-matchups",
+    question: "Why are old matchups or rivalry records missing?",
+    answer: (
+      <p>
+        Head-to-head records, total points, highest scores, weekly recaps, and
+        old matchup cards require weekly score data. If ESPN only exposes final
+        standings, the app cannot reconstruct those scores and will not invent
+        them. Browse Seasons clearly labels partial archives.
+      </p>
+    ),
+  },
+  {
+    id: "history-cleanup",
+    question: "How do I handle renamed teams and co-managers?",
+    answer: (
+      <>
+        <p>
+          Commissioners select Clean Up History inside the league. For each
+          historical team, enter every manager separated by commas. Reuse the
+          same franchise key—or select the matching current-team suggestion—when
+          one franchise changed names between seasons.
+        </p>
+        <p>
+          Save All Assignments after reviewing the seasons. This changes the
+          app's historical grouping only; it never edits ESPN.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "history-team-count",
+    question: "Why does the all-time team count look too high?",
+    answer: (
+      <p>
+        Before cleanup, each renamed team can look like a separate franchise.
+        Connect those names with the same franchise key in Clean Up History.
+        Repeated names are grouped automatically, but renamed franchises need a
+        commissioner to confirm the relationship.
+      </p>
+    ),
+  },
+  {
+    id: "history-stats",
+    question: "Which all-time statistics can I trust?",
+    answer: (
+      <>
+        <p>
+          Career wins, losses, finish order, and champions can include imported
+          final standings. Points-for, averages, highest scores, matchup
+          records, and head-to-head results only include seasons with weekly
+          score data.
+        </p>
+        <p>
+          Use the coverage note on each season card to see whether it contains
+          complete matchups or final standings only.
+        </p>
+      </>
+    ),
+  },
+];
+
+const accessAndPrivacy: FaqItem[] = [
+  {
+    id: "access-roles",
+    question: "What can commissioners do that members cannot?",
+    answer: (
+      <p>
+        Commissioners can connect and sync ESPN data, invite members, import or
+        upload history, clean up historical ownership, rename the league, and
+        delete it from this app. Members can view the shared league and select
+        their own current team.
+      </p>
+    ),
+  },
+  {
+    id: "privacy-cookies",
+    question: "Does the app collect ESPN passwords or cookies?",
+    answer: (
+      <p>
+        No. The app does not ask for or store ESPN passwords, espn_s2 cookies,
+        or SWID cookies. Current data is synced through the read-only league
+        information ESPN exposes when the league is viewable.
+      </p>
+    ),
+  },
+  {
+    id: "privacy-visibility",
+    question: "Who can see data inside the app?",
+    answer: (
+      <p>
+        App access is limited to authenticated accounts that connected the
+        league or joined it with its invite code. Do not post invite codes
+        publicly. ESPN's separate public-viewability setting controls what ESPN
+        itself exposes for read-only syncing.
+      </p>
+    ),
+  },
+  {
+    id: "privacy-export",
+    question: "Can I export league information?",
+    answer: (
+      <p>
+        Yes. Export downloads a Markdown league report with standings, season
+        leaders, and available highlights. Markdown can be pasted directly into
+        Craft or converted to another format.
+      </p>
+    ),
+  },
+  {
+    id: "privacy-delete",
+    question: "What happens if the commissioner deletes a league?",
+    answer: (
+      <p>
+        Deleting a league removes its imported statistics and member access from
+        this app. It does not delete or change the ESPN league. Deletion is not
+        an archive or hide action, so export anything important first.
+      </p>
+    ),
+  },
+];
+
+const troubleshooting: FaqItem[] = [
+  {
+    id: "trouble-sync",
+    question: "Why is the league sync failing?",
+    answer: (
+      <ul className="list-disc space-y-2 pl-5">
+        <li>Confirm the League ID from the ESPN URL.</li>
+        <li>Confirm the current ESPN league is viewable to the public.</li>
+        <li>
+          Make sure the commissioner connected the league for the current year.
+        </li>
+        <li>
+          Wait a few minutes and try Sync Now if ESPN is temporarily
+          unavailable.
+        </li>
+      </ul>
+    ),
+  },
+  {
+    id: "trouble-stale",
+    question: "What should I do if current stats look outdated?",
+    answer: (
+      <p>
+        Check the last-updated message on the dashboard. The commissioner can
+        select Sync Now. If the sync succeeds but ESPN has not finalized the
+        source data, wait for ESPN's stat correction or next update cycle.
+      </p>
+    ),
+  },
+  {
+    id: "trouble-history",
+    question:
+      "The current season works, but archived weeks are blank. Is that an error?",
+    answer: (
+      <p>
+        Not necessarily. ESPN may expose a season's final standings while
+        withholding its weekly matchup pages. Check Browse Seasons: a “final
+        standings imported” note confirms that the partial archive is working as
+        designed.
+      </p>
+    ),
+  },
+  {
+    id: "trouble-mobile",
+    question: "Does the app work on a phone, and how do I change themes?",
+    answer: (
+      <p>
+        Yes. The league pages are designed for mobile browsers; wide tables and
+        tab bars can scroll horizontally. Use the sun or moon button near the
+        page heading to switch between light and dark mode.
+      </p>
+    ),
+  },
+  {
+    id: "trouble-support",
+    question: "What information is safe to share when asking for help?",
+    answer: (
+      <p>
+        Share the League ID, affected season, the exact on-screen error, and a
+        screenshot with personal details removed. Never send an ESPN password,
+        browser cookie, authentication code, or full invite code.
+      </p>
+    ),
+  },
+];
 
 export default function FAQ() {
   const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="border-b bg-card">
-        <div className="container py-6">
+        <div className="container py-4 sm:py-6">
           <Button
             variant="ghost"
             onClick={() => setLocation("/dashboard")}
-            className="mb-4"
+            className="mb-3 sm:mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 sm:h-12 sm:w-12">
               <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-card-foreground">
-                Help Center & FAQ
+              <h1 className="text-2xl font-bold text-card-foreground sm:text-3xl">
+                Help Center &amp; FAQ
               </h1>
-              <p className="text-muted-foreground">
-                Everything you need to know about Trouble in Paradise Fantasy
-                Football Tracker
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                Accurate setup, syncing, history, privacy, and troubleshooting
+                guidance for Fantasy Football Tracker
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container py-8 max-w-4xl">
-        {/* Features Overview */}
-        <Card className="mb-8">
+      <div className="container max-w-4xl py-6 sm:py-8">
+        <Card className="mb-6 border-primary/30 bg-primary/5 sm:mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              The simple league setup
+            </CardTitle>
+            <CardDescription>
+              One commissioner connects ESPN; every invited member receives the
+              same refreshed league view.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="grid gap-3 text-sm sm:grid-cols-3">
+              <li className="rounded-lg border bg-background p-4">
+                <strong className="block text-card-foreground">
+                  1. Connect
+                </strong>
+                <span className="text-muted-foreground">
+                  The commissioner pastes the ESPN League ID once.
+                </span>
+              </li>
+              <li className="rounded-lg border bg-background p-4">
+                <strong className="block text-card-foreground">
+                  2. Invite
+                </strong>
+                <span className="text-muted-foreground">
+                  Members join this app with the league invite code.
+                </span>
+              </li>
+              <li className="rounded-lg border bg-background p-4">
+                <strong className="block text-card-foreground">
+                  3. Refresh
+                </strong>
+                <span className="text-muted-foreground">
+                  Automatic ESPN updates keep the shared current season fresh.
+                </span>
+              </li>
+            </ol>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6 sm:mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-primary" />
-              What Makes This App Special
+              What the app includes
             </CardTitle>
             <CardDescription>
-              Trouble in Paradise is the ultimate companion for your ESPN
-              Fantasy Football league
+              Current-season decision support plus an honest, coverage-aware
+              historical archive
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+          <CardContent>
+            <div className="grid gap-5 sm:grid-cols-2">
               <div className="flex gap-3">
-                <BarChart3 className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                <RefreshCw className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">All-Time Stats Tracking</h3>
+                  <h3 className="font-semibold">Automatic ESPN updates</h3>
                   <p className="text-sm text-muted-foreground">
-                    Track career records, championships, and historical
-                    performance across multiple seasons
+                    Shared standings, matchups, rosters, and waiver availability
+                    without member cookie setup.
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-3">
-                <Users className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                <History className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Head-to-Head Matrix</h3>
+                  <h3 className="font-semibold">Historical seasons</h3>
                   <p className="text-sm text-muted-foreground">
-                    See your complete rivalry records against every team in your
-                    league's history
+                    Final standings, champions, and weekly scores when ESPN
+                    makes each type of archive data available.
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-3">
-                <TrendingUp className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                <Users className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Weekly Matchup Analysis</h3>
+                  <h3 className="font-semibold">Shared league access</h3>
                   <p className="text-sm text-muted-foreground">
-                    View live scores, projections, and detailed breakdowns for
-                    every week
+                    Commissioner-managed invites, team selection, co-manager
+                    history, and renamed-franchise cleanup.
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-3">
-                <RefreshCw className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                <BarChart3 className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">One-Click ESPN Sync</h3>
+                  <h3 className="font-semibold">Career analytics</h3>
                   <p className="text-sm text-muted-foreground">
-                    Instantly pull the latest data from ESPN with a single
-                    button click
+                    W-L records and championships, with score-based statistics
+                    only where weekly matchup data exists.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <CloudSun className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Players and weather</h3>
+                  <p className="text-sm text-muted-foreground">
+                    League-specific available players plus NFL kickoff and
+                    outdoor weather outlooks.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Bot className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Recaps and AI questions</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Weekly summaries, comparisons, highlights, and answers based
+                    on the league data actually stored.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 sm:col-span-2">
+                <Smartphone className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Mobile and light/dark modes</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Responsive league pages with a theme switch for comfortable
+                    use on phones, tablets, and desktop browsers.
                   </p>
                 </div>
               </div>
@@ -120,281 +615,27 @@ export default function FAQ() {
           </CardContent>
         </Card>
 
-        {/* Getting Started */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1">
-                <AccordionTrigger>
-                  How do I connect my ESPN Fantasy Football league?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground space-y-2">
-                  <p>Connecting your league is easy:</p>
-                  <ol className="list-decimal list-inside space-y-1 ml-2">
-                    <li>Click the "Add League" button on your dashboard</li>
-                    <li>Paste your ESPN league URL or League ID</li>
-                    <li>
-                      Ask the league manager to enable public viewability in
-                      ESPN if needed
-                    </li>
-                    <li>Click "Connect League & Start Auto-Sync"</li>
-                  </ol>
-                </AccordionContent>
-              </AccordionItem>
+        <FaqSection title="Getting Started" items={gettingStarted} />
+        <FaqSection
+          title="Current Season & Decision Tools"
+          items={currentSeason}
+        />
+        <FaqSection title="Historical Seasons" items={historicalData} />
+        <FaqSection title="Access, Privacy & Export" items={accessAndPrivacy} />
+        <FaqSection title="Troubleshooting" items={troubleshooting} />
 
-              <AccordionItem value="item-2">
-                <AccordionTrigger>
-                  Where do I find my ESPN League ID?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  <p>
-                    Your League ID is in your ESPN Fantasy Football league URL:
-                  </p>
-                  <p className="mt-2 p-2 bg-muted rounded font-mono text-xs">
-                    https://fantasy.espn.com/football/league?leagueId=
-                    <span className="text-primary font-bold">123456</span>
-                  </p>
-                  <p className="mt-2">
-                    The number after "leagueId=" is your League ID (in this
-                    example: 123456)
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-3">
-                <AccordionTrigger>
-                  Does a private league require ESPN cookies?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground space-y-2">
-                  <p>
-                    No. This app never asks for or stores ESPN browser cookies.
-                  </p>
-                  <p>
-                    The ESPN league manager can enable public viewability in
-                    League Settings. That allows read-only syncing without
-                    allowing strangers to join or change the ESPN league.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-4">
-                <AccordionTrigger>
-                  Can I track multiple leagues?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes! You can connect and track as many ESPN Fantasy Football
-                  leagues as you want. Each league will appear on your dashboard
-                  with its own stats and data. Simply click "Add League" to
-                  connect additional leagues.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* Features & Usage */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Features & Usage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-5">
-                <AccordionTrigger>
-                  What is the Head-to-Head Matrix?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  The Head-to-Head Matrix shows your complete record against
-                  every team in your league across all seasons. It displays
-                  win-loss records in a grid format, with color coding to
-                  highlight winning (green) and losing (red) records. This helps
-                  you track rivalries and see which matchups you dominate or
-                  struggle with historically.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-6">
-                <AccordionTrigger>
-                  How do I view weekly matchups?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Click "View League" on any league card, then navigate to the
-                  "Current Week" tab. You'll see all matchups for the selected
-                  week with scores and projections. Use the week selector to
-                  view past or future weeks. The matchup cards show home vs away
-                  teams with their current scores and projected totals.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-7">
-                <AccordionTrigger>
-                  What stats are included in All-Time Stats?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground space-y-2">
-                  <p>The All-Time Stats dashboard includes:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Career win-loss records for each team</li>
-                    <li>Total points scored across all seasons</li>
-                    <li>Win percentages and rankings</li>
-                    <li>Highest and lowest scoring games</li>
-                    <li>Average points per game</li>
-                    <li>Championship history (coming soon)</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-8">
-                <AccordionTrigger>
-                  How often should I sync my league data?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Current league data refreshes automatically every 30 minutes.
-                  The commissioner can also use "Sync Now" whenever an immediate
-                  refresh is useful.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-9">
-                <AccordionTrigger>
-                  Can I track multiple seasons for the same league?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes. The commissioner taps "Import History" once after
-                  connecting the current league. The app finds public archived
-                  seasons tied to that ESPN League ID and imports their final
-                  standings and weekly matchups. If ESPN keeps an archive
-                  private, the commissioner can upload a sanitized history file
-                  instead. The app clearly labels seasons that contain final
-                  standings but not weekly scores.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* Troubleshooting */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Troubleshooting</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-10">
-                <AccordionTrigger>
-                  Why is my league sync failing?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground space-y-2">
-                  <p>Common reasons for sync failures:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>
-                      <strong>Invalid League ID:</strong> Double-check your
-                      league ID from the ESPN URL
-                    </li>
-                    <li>
-                      <strong>League not publicly viewable:</strong> Ask the
-                      ESPN league manager to enable public viewability
-                    </li>
-                    <li>
-                      <strong>ESPN API issues:</strong> Occasionally ESPN's
-                      servers have temporary issues. Try again in a few minutes
-                    </li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-11">
-                <AccordionTrigger>
-                  My stats look incorrect or outdated
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  If your stats appear wrong, try clicking the "Sync Data"
-                  button to pull fresh data from ESPN. If the issue persists,
-                  there may be a delay in ESPN updating their API. Stats
-                  typically update within minutes after games complete, but can
-                  occasionally take longer during high-traffic periods.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-12">
-                <AccordionTrigger>
-                  I can't see some teams or matchups
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  If teams or matchups are missing, try syncing your league data
-                  again. If you recently added a new team or made major league
-                  changes in ESPN, it may take one sync cycle for all data to
-                  appear correctly. Make sure you're viewing the correct week in
-                  the matchup viewer.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-13">
-                <AccordionTrigger>
-                  How do I delete or disconnect a league?
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  The commissioner can rename or delete a connected league from
-                  the dashboard. Deleting removes its imported data and member
-                  access from this app; it does not change the ESPN league.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* Privacy & Security */}
-        <Card>
+        <Card className="border-dashed">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              Privacy & Security
+              <Shield className="h-5 w-5 text-primary" />A useful support rule
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-14">
-                <AccordionTrigger>Is my ESPN data secure?</AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  The app does not collect ESPN passwords, espn_s2 cookies, or
-                  SWID cookies. It stores read-only league statistics from
-                  publicly viewable ESPN league pages and restricts app access
-                  to invited, authenticated members.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-15">
-                <AccordionTrigger>Who can see my league data?</AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Only you and other authenticated users in your league can see
-                  the data. Each league's data is private and only accessible to
-                  users who have connected that specific league to their
-                  account. We don't make any league data public.
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="item-16">
-                <AccordionTrigger>Can I export my data?</AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  Yes. The Export button downloads a Markdown league report with
-                  standings, season leaders, and selected highlights. Markdown
-                  can be pasted into Craft or converted to PDF.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+          <CardContent className="text-sm text-muted-foreground">
+            League IDs and screenshots are usually enough to diagnose a problem.
+            No support request should require your ESPN password, browser
+            cookies, or authentication codes.
           </CardContent>
         </Card>
-
-        {/* Contact */}
-        <div className="mt-8 text-center text-muted-foreground">
-          <p>Still have questions? Need help with something specific?</p>
-          <p className="mt-2">
-            Contact us or check back - we're constantly adding new features and
-            improvements!
-          </p>
-        </div>
       </div>
     </div>
   );
