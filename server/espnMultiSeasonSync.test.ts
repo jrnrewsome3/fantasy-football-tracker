@@ -48,4 +48,17 @@ describe("archived ESPN season import", () => {
     expect(result.seasons).toEqual([]);
     expect(syncHistoricalSeasonData).not.toHaveBeenCalled();
   });
+
+  it("explains how the commissioner can unlock private archives", async () => {
+    syncHistoricalSeasonData.mockResolvedValue({
+      success: false,
+      message: "not authorized",
+    });
+    const { syncAllSeasons } = await import("./espnMultiSeasonSync");
+    const result = await syncAllSeasons("12345");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("separate privacy settings");
+    expect(result.message).toContain("League Manager");
+  });
 });
