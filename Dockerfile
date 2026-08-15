@@ -22,5 +22,6 @@ COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/dist ./dist
+COPY drizzle ./drizzle
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
