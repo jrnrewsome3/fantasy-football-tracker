@@ -10,12 +10,4 @@ export const ENV = {
   openaiApiUrl: process.env.OPENAI_API_URL ?? "https://api.openai.com",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-  /**
-   * Deprecated Manus Forge stubs — unused product features (maps/image/voice)
-   * keep compiling until those modules are removed.
-   */
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  appId: process.env.VITE_APP_ID ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
 };

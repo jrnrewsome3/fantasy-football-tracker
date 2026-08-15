@@ -2,9 +2,9 @@
 
 A full-stack web application for tracking, analyzing, and visualizing ESPN Fantasy Football league data across multiple seasons. Built for the **Trouble in Paradise** league, this app syncs historical data from 2018 to present and provides rich analytics, AI-powered insights, and a clean dashboard experience.
 
-**Production target:** self-hosted on Railway (or any Node host) with **Clerk** auth and **OpenAI** for AI features — not Manus.
+**Production target:** self-hosted on Railway (or any Node host) with **Clerk** auth and **OpenAI** for AI features.
 
-See [`DEPLOY.md`](./DEPLOY.md) for the off-Manus production cutover checklist.
+See [`DEPLOY.md`](./DEPLOY.md) for the production deploy checklist.
 
 ---
 

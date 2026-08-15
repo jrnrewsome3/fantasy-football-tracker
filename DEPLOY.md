@@ -1,4 +1,4 @@
-# Off-Manus production cutover checklist (Railway + Clerk + OpenAI)
+# Production deploy checklist (Railway + Clerk + OpenAI)
 
 ## Accounts to create
 1. Railway — https://railway.app (or Render/Fly)
@@ -37,8 +37,8 @@ pnpm dev
 3. Sync All Seasons
 4. Later refreshes: League page → **Sync Data**
 
-## What changed vs Manus
-- Auth: Clerk (not Manus OAuth)
-- AI: OpenAI API (not Forge)
-- Host: your Railway URL (not manus.space)
-- DB: your MySQL (not Manus-injected)
+## Stack
+- Auth: Clerk
+- AI: OpenAI API
+- Host: Railway (or any Node host) + Docker
+- DB: your MySQL instance

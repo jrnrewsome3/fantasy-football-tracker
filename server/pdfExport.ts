@@ -14,8 +14,7 @@ export interface PDFExportResult {
 }
 
 /**
- * Generate league stats report in Markdown format
- * (Will be converted to PDF on frontend using manus-md-to-pdf utility)
+ * Generate league stats report in Markdown format for download.
  */
 export async function generateLeagueStatsMarkdown(
   leagueId: number
