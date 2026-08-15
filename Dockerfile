@@ -7,6 +7,10 @@ COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+# Railway passes service variables as Docker build arguments. Vite needs the
+# public Clerk key while compiling the browser bundle.
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
 COPY . .
 RUN pnpm build
 
