@@ -179,6 +179,8 @@ export async function updateHistoricalOwnership(
       .map(team => [team.id, team])
   );
   const touchedYears = new Set<number>();
+  let completedSeasons = 0;
+  let incompleteSeasons = 0;
 
   for (const assignment of assignments) {
     const team = historicalById.get(assignment.teamId);
@@ -208,6 +210,8 @@ export async function updateHistoricalOwnership(
     const ownershipComplete = seasonTeams.every(team =>
       Boolean(team.ownerName)
     );
+    if (ownershipComplete) completedSeasons += 1;
+    else incompleteSeasons += 1;
     await db
       .update(leagueSeasons)
       .set({
@@ -225,6 +229,8 @@ export async function updateHistoricalOwnership(
   return {
     success: true,
     assignmentsUpdated: assignments.length,
+    completedSeasons,
+    incompleteSeasons,
     message: `Saved ${assignments.length} historical ownership assignments.`,
   };
 }

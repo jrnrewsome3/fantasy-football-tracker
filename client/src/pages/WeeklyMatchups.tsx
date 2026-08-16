@@ -16,12 +16,14 @@ interface WeeklyMatchupsProps {
   leagueId: number;
   currentWeek: number;
   seasonYear: number;
+  leagueCurrentSeasonYear: number;
 }
 
 export default function WeeklyMatchups({
   leagueId,
   currentWeek,
   seasonYear,
+  leagueCurrentSeasonYear,
 }: WeeklyMatchupsProps) {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const [selectedSeason, setSelectedSeason] = useState(seasonYear);
@@ -44,8 +46,14 @@ export default function WeeklyMatchups({
   });
 
   useEffect(() => {
-    setSelectedWeek(selectedSeason === seasonYear ? currentWeek : 1);
-  }, [selectedSeason, seasonYear, currentWeek]);
+    setSelectedSeason(seasonYear);
+  }, [seasonYear]);
+
+  useEffect(() => {
+    setSelectedWeek(
+      selectedSeason === leagueCurrentSeasonYear ? currentWeek : 1
+    );
+  }, [selectedSeason, leagueCurrentSeasonYear, currentWeek]);
 
   const getTeamName = (teamId: number) => {
     const team = teams?.find(t => t.espnTeamId === teamId);
@@ -80,7 +88,8 @@ export default function WeeklyMatchups({
             <SelectContent>
               {availableSeasons.map(season => (
                 <SelectItem key={season} value={season.toString()}>
-                  {season} Season {season === seasonYear && "(Current)"}
+                  {season} Season{" "}
+                  {season === leagueCurrentSeasonYear && "(Current)"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -102,9 +111,10 @@ export default function WeeklyMatchups({
           <h3 className="text-lg font-semibold text-foreground">
             Week {selectedWeek}
           </h3>
-          {selectedWeek === currentWeek && (
-            <p className="text-sm text-muted-foreground">Current Week</p>
-          )}
+          {selectedSeason === leagueCurrentSeasonYear &&
+            selectedWeek === currentWeek && (
+              <p className="text-sm text-muted-foreground">Current Week</p>
+            )}
         </div>
         <Button
           variant="outline"
@@ -250,7 +260,9 @@ export default function WeeklyMatchups({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center text-sm text-muted-foreground">
-            Sync your league data to see matchups for Week {selectedWeek}
+            {selectedSeason === leagueCurrentSeasonYear
+              ? `Sync your league data to see matchups for Week ${selectedWeek}.`
+              : `No weekly matchup scores are stored for ${selectedSeason}. This season may contain final standings only.`}
           </CardContent>
         </Card>
       )}

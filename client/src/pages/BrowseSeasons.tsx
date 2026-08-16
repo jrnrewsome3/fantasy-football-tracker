@@ -40,6 +40,9 @@ export default function BrowseSeasons() {
   // Get league name from first available league with this ESPN ID
   const leagueName =
     leagues?.find(l => l.espnLeagueId === espnLeagueId)?.name || "League";
+  const currentSeasonYear = leagues?.find(
+    l => l.espnLeagueId === espnLeagueId
+  )?.seasonYear;
 
   if (authLoading) {
     return (
@@ -121,7 +124,7 @@ export default function BrowseSeasons() {
               Browse Seasons
             </h1>
             <p className="text-muted-foreground mt-1">
-              Complete season archive for {leagueName}
+              Season-by-season results and data coverage for {leagueName}
             </p>
           </div>
 
@@ -132,7 +135,11 @@ export default function BrowseSeasons() {
                 <Card
                   key={`${league.id}-${league.seasonYear}`}
                   className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => setLocation(`/league/${league.id}`)}
+                  onClick={() =>
+                    setLocation(
+                      `/league/${league.id}?season=${league.seasonYear}`
+                    )
+                  }
                 >
                   <CardHeader className="border-b bg-gradient-to-br from-primary/5 to-transparent">
                     <div className="flex items-center justify-between">
@@ -204,6 +211,16 @@ export default function BrowseSeasons() {
                       </div>
                     )}
 
+                    {coverage &&
+                      !coverage.ownershipComplete &&
+                      league.seasonYear !== currentSeasonYear && (
+                        <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 p-2 text-xs text-muted-foreground">
+                          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
+                          Manager and franchise links still need commissioner
+                          review before career totals are calculated.
+                        </div>
+                      )}
+
                     {/* Week Info */}
                     <div className="pt-2 border-t">
                       <p className="text-xs text-muted-foreground">
@@ -221,7 +238,7 @@ export default function BrowseSeasons() {
             <CardHeader>
               <CardTitle>Archive Summary</CardTitle>
               <CardDescription>
-                Complete history of {leagueName}
+                Imported history for {leagueName}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -244,7 +261,7 @@ export default function BrowseSeasons() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    Total Games Played
+                    Weekly Matchups Stored
                   </p>
                   <p className="text-2xl font-bold text-card-foreground">
                     {seasonSummaries

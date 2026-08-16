@@ -14,11 +14,14 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   CheckCircle2,
+  ArrowLeft,
+  AlertCircle,
   ExternalLink,
   Link2,
   Loader2,
   ShieldCheck,
   Trophy,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -42,9 +45,11 @@ export default function LeagueSetup() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [leagueLink, setLeagueLink] = useState("");
+  const [existingLeagueError, setExistingLeagueError] = useState(false);
 
   const connectLeague = trpc.league.sync.useMutation({
     onSuccess: data => {
+      setExistingLeagueError(false);
       if (!data.success) {
         toast.error("We could not connect that league", {
           description: data.message,
@@ -56,8 +61,18 @@ export default function LeagueSetup() {
       });
       setLocation("/dashboard");
     },
-    onError: error =>
-      toast.error("Connection failed", { description: error.message }),
+    onError: error => {
+      const alreadyConnected =
+        error.message.includes("already connected") ||
+        error.message.includes("do not have access");
+      setExistingLeagueError(alreadyConnected);
+      toast.error(
+        alreadyConnected
+          ? "This league already has a commissioner"
+          : "Connection failed",
+        { description: error.message }
+      );
+    },
   });
 
   const handleConnect = () => {
@@ -92,15 +107,42 @@ export default function LeagueSetup() {
     <div className="min-h-screen bg-background">
       <div className="container py-12">
         <div className="max-w-2xl mx-auto space-y-8">
+          <Button variant="ghost" onClick={() => setLocation("/dashboard")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          </Button>
+
           <div className="flex items-center gap-3">
             <Trophy className="h-10 w-10 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">Connect your ESPN league</h1>
+              <h1 className="text-3xl font-bold">Set up an ESPN league</h1>
               <p className="text-muted-foreground">
-                One commissioner setup. Automatic updates for every member.
+                Commissioner setup only. League members join with an invite
+                code.
               </p>
             </div>
           </div>
+
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-primary" /> Joining someone
+                else's league?
+              </CardTitle>
+              <CardDescription>
+                Do not reconnect the ESPN League ID. Use the invite code from
+                your commissioner.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setLocation("/dashboard?join=1")}
+              >
+                I have an invite code
+              </Button>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -135,6 +177,26 @@ export default function LeagueSetup() {
                   messages private.
                 </AlertDescription>
               </Alert>
+
+              {existingLeagueError && (
+                <Alert className="border-amber-500/40 bg-amber-500/10">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>This league is already connected</AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>
+                      Your sign-in worked. Return to the dashboard and join with
+                      the invitation code from the league commissioner.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLocation("/dashboard?join=1")}
+                    >
+                      Join Team League
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Button
                 className="w-full"

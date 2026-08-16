@@ -1,6 +1,13 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Trophy, BarChart3, Users, Activity, ArrowRight, Loader2 } from "lucide-react";
+import {
+  Trophy,
+  BarChart3,
+  Users,
+  Activity,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
@@ -37,22 +44,27 @@ export default function Home() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
               <Trophy className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">ESPN Fantasy Football Analytics</span>
+              <span className="text-sm font-medium text-foreground">
+                ESPN Fantasy Football Analytics
+              </span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
               Trouble in Paradise
-              <span className="text-primary block mt-2">Fantasy Football Tracker</span>
+              <span className="text-primary block mt-2">
+                Fantasy Football Tracker
+              </span>
             </h1>
-            
+
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Comprehensive analytics, all-time stats, power rankings, and insights for your ESPN Fantasy Football league. Make smarter decisions and dominate your competition.
+              Shared standings, matchups, available players, weather, and
+              coverage-aware league history for ESPN Fantasy Football.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => (window.location.href = getLoginUrl())}
                 className="text-lg px-8"
               >
                 Get Started
@@ -61,7 +73,7 @@ export default function Home() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => (window.location.href = getLoginUrl())}
                 className="text-lg px-8"
               >
                 Sign In
@@ -74,7 +86,9 @@ export default function Home() {
       {/* Features Section */}
       <div className="container py-24">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Everything You Need to Win</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+            Everything You Need to Win
+          </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Powerful features designed to give you the competitive edge
           </p>
@@ -85,9 +99,12 @@ export default function Home() {
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <BarChart3 className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-card-foreground">All-Time Stats</h3>
+            <h3 className="text-xl font-semibold mb-2 text-card-foreground">
+              All-Time Stats
+            </h3>
             <p className="text-muted-foreground">
-              Track career records, championships, and historical performance across multiple seasons.
+              Track career records, championships, and historical performance
+              across multiple seasons.
             </p>
           </div>
 
@@ -95,9 +112,12 @@ export default function Home() {
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Trophy className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-card-foreground">Power Rankings</h3>
+            <h3 className="text-xl font-semibold mb-2 text-card-foreground">
+              Historical Seasons
+            </h3>
             <p className="text-muted-foreground">
-              Dynamic weekly rankings based on performance metrics and advanced analytics.
+              Browse final standings and champions, with weekly results wherever
+              ESPN makes them available.
             </p>
           </div>
 
@@ -105,9 +125,12 @@ export default function Home() {
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Users className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-card-foreground">Team Analytics</h3>
+            <h3 className="text-xl font-semibold mb-2 text-card-foreground">
+              Players & Weather
+            </h3>
             <p className="text-muted-foreground">
-              Detailed team profiles with roster management, trends, and head-to-head records.
+              Review league-specific available players and upcoming outdoor game
+              conditions.
             </p>
           </div>
 
@@ -115,9 +138,12 @@ export default function Home() {
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Activity className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-card-foreground">Live Activity Feed</h3>
+            <h3 className="text-xl font-semibold mb-2 text-card-foreground">
+              Recent Activity
+            </h3>
             <p className="text-muted-foreground">
-              Real-time tracking of trades, waiver pickups, and all league transactions.
+              Follow the league activity ESPN returns during automatic
+              refreshes.
             </p>
           </div>
         </div>
@@ -130,11 +156,12 @@ export default function Home() {
             Ready to Elevate Your Fantasy Game?
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Connect your ESPN league in minutes and start making data-driven decisions.
+            Commissioners connect ESPN once. Members join the shared league with
+            an invite code.
           </p>
           <Button
             size="lg"
-            onClick={() => window.location.href = getLoginUrl()}
+            onClick={() => (window.location.href = getLoginUrl())}
             className="text-lg px-8"
           >
             Get Started Now
@@ -149,7 +176,9 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-card-foreground">Trouble in Paradise</span>
+              <span className="font-semibold text-card-foreground">
+                Trouble in Paradise
+              </span>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2026 All rights reserved
