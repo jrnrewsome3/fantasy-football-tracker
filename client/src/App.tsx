@@ -18,9 +18,17 @@ import OwnerLeaderboard from "./pages/OwnerLeaderboard";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
 import HistoryOwnership from "./pages/HistoryOwnership";
+import HistoryUnavailable from "./pages/HistoryUnavailable";
 import OnboardingTutorial from "./components/OnboardingTutorial";
+import { HISTORY_ENABLED } from "@shared/const";
+import type { ComponentType } from "react";
 
 function Router() {
+  // Historical screens are swapped for a notice while past-season data is
+  // rebuilt and verified (HISTORY_ENABLED in shared/const.ts).
+  const history = (component: ComponentType<any>) =>
+    HISTORY_ENABLED ? component : HistoryUnavailable;
+
   return (
     <Switch>
       <Route path={"/"} component={Home} />
@@ -32,19 +40,31 @@ function Router() {
       <Route path="/setup" component={LeagueSetup} />
       <Route path="/faq" component={FAQ} />
       <Route path={"/league/:id"} component={LeagueDetail} />
-      <Route path={"/league/:id/highlights"} component={HistoricalHighlights} />
-      <Route path={"/league/:id/compare"} component={TeamComparison} />
+      <Route
+        path={"/league/:id/highlights"}
+        component={history(HistoricalHighlights)}
+      />
+      <Route
+        path={"/league/:id/compare"}
+        component={history(TeamComparison)}
+      />
       <Route path={"/league/:id/recap"} component={WeeklyRecap} />
       <Route
         path={"/league/:id/history-ownership"}
-        component={HistoryOwnership}
+        component={history(HistoryOwnership)}
       />
       <Route
         path={"/team/:espnTeamId/:espnLeagueId/history"}
-        component={TeamHistory}
+        component={history(TeamHistory)}
       />
-      <Route path={"/seasons/:espnLeagueId"} component={BrowseSeasons} />
-      <Route path={"/leaderboard/:espnLeagueId"} component={OwnerLeaderboard} />
+      <Route
+        path={"/seasons/:espnLeagueId"}
+        component={history(BrowseSeasons)}
+      />
+      <Route
+        path={"/leaderboard/:espnLeagueId"}
+        component={history(OwnerLeaderboard)}
+      />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
+import { HISTORY_ENABLED } from "@shared/const";
 import { useRestartTutorial } from "@/components/OnboardingTutorial";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -290,26 +291,30 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setLocation(`/leaderboard/${league.espnLeagueId}`);
-                        }}
-                      >
-                        Leaderboard
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setLocation(`/seasons/${league.espnLeagueId}`);
-                        }}
-                      >
-                        Browse Seasons
-                      </Button>
+                      {HISTORY_ENABLED && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setLocation(`/leaderboard/${league.espnLeagueId}`);
+                          }}
+                        >
+                          Leaderboard
+                        </Button>
+                      )}
+                      {HISTORY_ENABLED && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setLocation(`/seasons/${league.espnLeagueId}`);
+                          }}
+                        >
+                          Browse Seasons
+                        </Button>
+                      )}
                       {league.userRole === "commissioner" && (
                         <>
                           <Button
