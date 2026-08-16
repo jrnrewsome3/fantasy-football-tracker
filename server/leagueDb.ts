@@ -658,6 +658,10 @@ export async function insertTransaction(
       transaction.playerId == null
         ? isNull(transactions.playerId)
         : eq(transactions.playerId, transaction.playerId);
+    const playerNameMatch =
+      transaction.playerName == null
+        ? isNull(transactions.playerName)
+        : eq(transactions.playerName, transaction.playerName);
     const existing = await db
       .select({ id: transactions.id })
       .from(transactions)
@@ -668,7 +672,8 @@ export async function insertTransaction(
           eq(transactions.transactionType, transaction.transactionType),
           eq(transactions.teamId, transaction.teamId),
           eq(transactions.transactionDate, transaction.transactionDate),
-          playerMatch
+          playerMatch,
+          playerNameMatch
         )
       )
       .limit(1);
