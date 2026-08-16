@@ -364,7 +364,21 @@ export default function TeamComparison() {
                           return (
                             <TableRow key={matchup.id}>
                               <TableCell>{matchup.seasonYear}</TableCell>
-                              <TableCell>Week {matchup.week}</TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {matchup.isPlayoffs ? (
+                                  <span className="text-primary font-medium">
+                                    Playoffs
+                                    {(matchup.scoringWeeks ?? 1) > 1 && (
+                                      <span className="text-muted-foreground font-normal">
+                                        {" "}
+                                        (2-week)
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  `Week ${matchup.week}`
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">
                                 <span className={team1Won ? "font-bold text-green-500" : ""}>
                                   {team1Score?.toFixed(1) || '0.0'}
