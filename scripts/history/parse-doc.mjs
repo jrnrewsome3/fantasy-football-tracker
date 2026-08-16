@@ -91,8 +91,16 @@ function parse(lines) {
   let season = null;
   let period = null;
 
-  const startPeriod = (label, kind, week) => {
-    period = { label, kind, week, games: [], byes: [], unparsed: [] };
+  const startPeriod = (label, kind, week, scoringWeeks = 1) => {
+    period = {
+      label,
+      kind,
+      week,
+      scoringWeeks,
+      games: [],
+      byes: [],
+      unparsed: [],
+    };
     season.periods.push(period);
   };
 
@@ -128,10 +136,19 @@ function parse(lines) {
     const playoffMatch = line.match(PLAYOFF);
     if (playoffMatch) {
       season.collecting = false;
+      // Early seasons ran playoff rounds across two NFL weeks and recorded a
+      // single combined score ("week 14 - week 15"). Read the span from the
+      // heading rather than assuming, so scores are never compared across
+      // different-length scoring windows.
+      const weeks = (playoffMatch[2].match(/\d+/g) || []).map(Number);
+      const span = weeks.length
+        ? Math.max(...weeks) - Math.min(...weeks) + 1
+        : 1;
       startPeriod(
         `Playoff Round ${playoffMatch[1]}`,
         "playoff",
-        Number(playoffMatch[1])
+        Number(playoffMatch[1]),
+        span
       );
       continue;
     }
@@ -298,6 +315,7 @@ function toPayload(season) {
         schedule.push({
           id: schedule.length + 1,
           matchupPeriodId,
+          scoringWeeks: period.scoringWeeks,
           playoffTierType: period.kind === "regular" ? "NONE" : "CONSOLATION",
           winner: "UNDECIDED",
           home: { teamId: teamId.get(game.home) ?? null, totalPoints: game.homeScore },
@@ -318,6 +336,9 @@ function toPayload(season) {
       schedule.push({
         id: schedule.length + 1,
         matchupPeriodId,
+        // How many NFL weeks this single matchup was scored over. Scores are
+        // only comparable between matchups with the same span.
+        scoringWeeks: period.scoringWeeks,
         playoffTierType: tier,
         winner:
           game.homeScore === game.awayScore
@@ -370,7 +391,9 @@ for (const s of seasons) repair(s);
 await mkdir(OUT_DIR, { recursive: true });
 
 console.log(`\nParsed ${path.basename(args.file)} — ${lines.length} lines\n`);
-console.log("YEAR  PLAYERS  REG WEEKS  PLAYOFF ROUNDS  GAMES  CHAMPION");
+console.log(
+  "YEAR  PLAYERS  REG WEEKS  PLAYOFF ROUNDS  GAMES  PLAYOFF FORMAT  CHAMPION"
+);
 
 const summaries = [];
 for (const s of seasons) {
@@ -383,6 +406,9 @@ for (const s of seasons) {
   const champ = payload.season.teams.find(t => t.rankCalculatedFinal === 1);
   const games = payload.season.schedule.length;
   const incomplete = payload.season.schedule.filter(g => g.incomplete).length;
+  const multiWeek = payload.season.schedule.filter(
+    g => (g.scoringWeeks || 1) > 1
+  ).length;
 
   console.log(
     [
@@ -391,10 +417,17 @@ for (const s of seasons) {
       String(s.periods.filter(p => p.kind === "regular").length).padStart(10),
       String(s.periods.filter(p => p.kind === "playoff").length).padStart(15),
       String(games).padStart(6),
+      (multiWeek ? `${multiWeek} two-week` : "all one-week").padStart(15),
       "  " + (champ ? champ.name : "(none)") + (incomplete ? `  [${incomplete} incomplete]` : ""),
     ].join(" ")
   );
-  summaries.push({ year: s.year, games, incomplete, champion: champ?.name });
+  summaries.push({
+    year: s.year,
+    games,
+    incomplete,
+    multiWeekMatchups: multiWeek,
+    champion: champ?.name,
+  });
 }
 
 await writeFile(
