@@ -330,15 +330,26 @@ export default function LeagueDetail() {
     );
   }
 
+  // Career standings need a qualification floor, like a batting title: a
+  // 10-3 single season should not outrank seven-year veterans on win
+  // percentage alone. Owners under the minimum still appear, grouped below
+  // the qualified field.
+  const MIN_CAREER_GAMES = 30; // roughly two full seasons
+  const gamesPlayedOf = (t: { wins: number | null; losses: number | null; ties: number | null }) =>
+    (t.wins || 0) + (t.losses || 0) + (t.ties || 0);
+  const winPctOf = (t: { wins: number | null; losses: number | null; ties: number | null }) => {
+    const games = gamesPlayedOf(t);
+    return games ? (t.wins || 0) / games : 0;
+  };
+  const isQualified = (t: { wins: number | null; losses: number | null; ties: number | null }) =>
+    viewMode !== "alltime" || gamesPlayedOf(t) >= MIN_CAREER_GAMES;
+
   const sortedTeams = teams
     ? [...teams].sort((a, b) => {
-        const aWinPct =
-          (a.wins || 0) / ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)) ||
-          0;
-        const bWinPct =
-          (b.wins || 0) / ((b.wins || 0) + (b.losses || 0) + (b.ties || 0)) ||
-          0;
-        if (aWinPct !== bWinPct) return bWinPct - aWinPct;
+        const qualDiff = Number(isQualified(b)) - Number(isQualified(a));
+        if (qualDiff !== 0) return qualDiff;
+        const pctDiff = winPctOf(b) - winPctOf(a);
+        if (pctDiff !== 0) return pctDiff;
         return (b.pointsFor || 0) - (a.pointsFor || 0);
       })
     : [];
@@ -959,7 +970,7 @@ export default function LeagueDetail() {
                             }
                           >
                             <TableCell className="font-medium text-xs sm:text-sm">
-                              {index + 1}
+                              {isQualified(team) ? index + 1 : "—"}
                             </TableCell>
                             <TableCell className="min-w-[140px] sm:min-w-0">
                               <div>
@@ -969,6 +980,12 @@ export default function LeagueDetail() {
                                 {team.ownerName && (
                                   <div className="text-xs text-muted-foreground line-clamp-1">
                                     {team.ownerName}
+                                  </div>
+                                )}
+                                {!isQualified(team) && (
+                                  <div className="text-[11px] text-muted-foreground italic">
+                                    under {MIN_CAREER_GAMES}-game minimum (
+                                    {gamesPlayedOf(team)} played)
                                   </div>
                                 )}
                               </div>
