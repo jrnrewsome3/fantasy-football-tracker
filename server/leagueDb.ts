@@ -571,6 +571,54 @@ export async function upsertMatchup(
   }
 }
 
+/**
+ * Remove matchups for a week that ESPN no longer reports.
+ *
+ * Commissioners re-generate schedules, and upserting alone leaves the old
+ * pairings behind forever — the same team then appears in several games in one
+ * week, alongside games that no longer exist. Only ever called for the
+ * league's current season: archived seasons come from reconciled records and
+ * must never be pruned by a routine sync.
+ */
+export async function pruneWeekMatchups(
+  leagueId: number,
+  seasonYear: number,
+  week: number,
+  keep: Array<{ homeTeamId: number; awayTeamId: number }>
+): Promise<number> {
+  const db = await getDb();
+  // An empty fetch means ESPN told us nothing, not that the week is empty.
+  if (!db || keep.length === 0) return 0;
+
+  const existing = await db
+    .select()
+    .from(matchups)
+    .where(
+      and(
+        eq(matchups.leagueId, leagueId),
+        eq(matchups.seasonYear, seasonYear),
+        eq(matchups.week, week)
+      )
+    );
+
+  const wanted = new Set(
+    keep.map(k => `${k.homeTeamId}:${k.awayTeamId}`)
+  );
+  const stale = existing.filter(
+    row => !wanted.has(`${row.homeTeamId}:${row.awayTeamId}`)
+  );
+
+  for (const row of stale) {
+    await db.delete(matchups).where(eq(matchups.id, row.id));
+  }
+  if (stale.length) {
+    console.log(
+      `[LeagueDB] Removed ${stale.length} stale matchup(s) from ${seasonYear} week ${week}`
+    );
+  }
+  return stale.length;
+}
+
 export async function getMatchupsByWeek(
   leagueId: number,
   week: number,
