@@ -72,11 +72,16 @@ export default function HistoryOwnership() {
     return Array.from(grouped.entries()).sort(([a], [b]) => b - a);
   }, [rows]);
 
+  const identifiedManagers = (rows || []).filter(row =>
+    Boolean(drafts[row.id]?.ownerText.trim())
+  ).length;
+
   const saveMutation = trpc.league.updateHistoricalOwnership.useMutation({
     onSuccess: result => {
       toast.success(result.message, {
-        description:
-          "Repeated franchise keys now connect renamed teams across seasons.",
+        description: result.incompleteSeasons
+          ? `${result.completedSeasons} seasons are ready. ${result.incompleteSeasons} still need manager names before career totals unlock.`
+          : "All historical seasons are ready for career totals.",
       });
       utils.league.historicalOwnership.invalidate({ leagueId });
       utils.league.teams.invalidate();
@@ -172,6 +177,24 @@ export default function HistoryOwnership() {
           </Button>
         </div>
 
+        {rows?.length ? (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">
+                  {identifiedManagers} of {rows.length} manager records
+                  identified
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You can save progress at any time. Career totals unlock after
+                  every historical team has at least one manager and the
+                  franchise links have been reviewed.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {!rows?.length ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
@@ -192,7 +215,12 @@ export default function HistoryOwnership() {
                 <CardHeader>
                   <CardTitle>{year} Season</CardTitle>
                   <CardDescription>
-                    {seasonRows?.length || 0} historical teams
+                    {
+                      (seasonRows || []).filter(row =>
+                        Boolean(drafts[row.id]?.ownerText.trim())
+                      ).length
+                    }
+                    /{seasonRows?.length || 0} managers identified
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

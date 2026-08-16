@@ -61,8 +61,12 @@ export default function LeagueDetail() {
   const leagueId = params?.id ? parseInt(params.id) : 0;
   const utils = trpc.useUtils();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"single" | "alltime">("alltime");
+  const [viewMode, setViewMode] = useState<"single" | "alltime">("single");
   const [showHistoryHelp, setShowHistoryHelp] = useState(false);
+  const requestedSeason =
+    typeof window !== "undefined"
+      ? Number(new URLSearchParams(window.location.search).get("season"))
+      : 0;
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -101,12 +105,26 @@ export default function LeagueDetail() {
     ])
   ).sort((a, b) => b - a);
 
+  const historyNeedsCleanup = Boolean(
+    league &&
+      seasonSummaries?.some(
+        summary =>
+          summary.league.seasonYear < league.seasonYear &&
+          summary.coverage &&
+          !summary.coverage.ownershipComplete
+      )
+  );
+
   // Set default season to current league's season
   useEffect(() => {
     if (league && selectedSeason === null) {
-      setSelectedSeason(league.seasonYear);
+      setSelectedSeason(
+        requestedSeason && availableSeasons.includes(requestedSeason)
+          ? requestedSeason
+          : league.seasonYear
+      );
     }
-  }, [league, selectedSeason]);
+  }, [availableSeasons, league, requestedSeason, selectedSeason]);
 
   const { data: transactions, isLoading: transactionsLoading } =
     trpc.league.transactions.useQuery(
@@ -176,7 +194,7 @@ export default function LeagueDetail() {
         setShowHistoryHelp(false);
         toast.success(result.message, {
           description:
-            "Past standings and weekly matchups are ready to explore.",
+            "Review Browse Seasons for each season's standings and matchup coverage.",
         });
         utils.league.teams.invalidate();
         utils.league.matchups.invalidate();
@@ -204,6 +222,8 @@ export default function LeagueDetail() {
           ? result.warnings.join(" ")
           : "The archived standings are ready to review.",
       });
+      setViewMode("single");
+      if (league) setSelectedSeason(league.seasonYear);
       utils.league.teams.invalidate();
       utils.league.allMatchups.invalidate({ leagueId });
       utils.league.seasonSummaries.invalidate();
@@ -547,6 +567,33 @@ export default function LeagueDetail() {
       </div>
 
       <div className="container py-6 sm:py-8">
+        {historyNeedsCleanup && (
+          <Card className="mb-6 border-amber-500/40 bg-amber-500/10">
+            <CardHeader>
+              <CardTitle className="text-base">
+                Historical results imported—team identities need review
+              </CardTitle>
+              <CardDescription>
+                Season-by-season standings are ready. Career totals are paused
+                so renamed teams and co-managed franchises are not counted as
+                unrelated teams.
+              </CardDescription>
+            </CardHeader>
+            {league.userRole === "commissioner" && (
+              <CardContent>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    setLocation(`/league/${leagueId}/history-ownership`)
+                  }
+                >
+                  <UsersRound className="h-4 w-4" /> Review Historical Teams
+                </Button>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
@@ -796,8 +843,16 @@ export default function LeagueDetail() {
                           size="sm"
                           onClick={() => setViewMode("alltime")}
                           className="text-xs"
+                          disabled={historyNeedsCleanup}
+                          title={
+                            historyNeedsCleanup
+                              ? "Review historical team identities before calculating career totals"
+                              : undefined
+                          }
                         >
-                          All-Time
+                          {historyNeedsCleanup
+                            ? "All-Time (review first)"
+                            : "All-Time"}
                         </Button>
                       </div>
                       {/* Season Selector (only for single season mode) */}
@@ -875,11 +930,22 @@ export default function LeagueDetail() {
                         {sortedTeams.map((team, index) => (
                           <TableRow
                             key={team.id}
-                            className="cursor-pointer hover:bg-accent/50"
-                            onClick={() =>
-                              setLocation(
-                                `/team/${team.espnTeamId}/${league.espnLeagueId}/history`
-                              )
+                            className={
+                              historyNeedsCleanup
+                                ? ""
+                                : "cursor-pointer hover:bg-accent/50"
+                            }
+                            onClick={() => {
+                              if (!historyNeedsCleanup) {
+                                setLocation(
+                                  `/team/${team.espnTeamId}/${league.espnLeagueId}/history`
+                                );
+                              }
+                            }}
+                            title={
+                              historyNeedsCleanup
+                                ? "Team career history will unlock after historical cleanup"
+                                : undefined
                             }
                           >
                             <TableCell className="font-medium text-xs sm:text-sm">
@@ -949,15 +1015,44 @@ export default function LeagueDetail() {
             <WeeklyMatchups
               leagueId={leagueId}
               currentWeek={league.currentWeek || 1}
-              seasonYear={league.seasonYear}
+              seasonYear={selectedSeason || league.seasonYear}
+              leagueCurrentSeasonYear={league.seasonYear}
             />
           </TabsContent>
 
           <TabsContent value="alltime" className="space-y-4">
-            <AllTimeStats
-              leagueId={leagueId}
-              espnLeagueId={league.espnLeagueId}
-            />
+            {historyNeedsCleanup ? (
+              <Card className="border-amber-500/40 bg-amber-500/10">
+                <CardHeader>
+                  <CardTitle>Career totals are waiting for cleanup</CardTitle>
+                  <CardDescription>
+                    The imported season records are available, but renamed teams
+                    and co-managers must be connected before an all-time
+                    leaderboard can be accurate.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Use the season selector under Standings for accurate
+                    year-by-year results.
+                  </p>
+                  {league.userRole === "commissioner" && (
+                    <Button
+                      onClick={() =>
+                        setLocation(`/league/${leagueId}/history-ownership`)
+                      }
+                    >
+                      <UsersRound className="h-4 w-4" /> Clean Up History
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <AllTimeStats
+                leagueId={leagueId}
+                espnLeagueId={league.espnLeagueId}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-4">

@@ -37,9 +37,9 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: "connect",
-    title: "Connect Your ESPN League",
+    title: "Set Up or Join a League",
     description:
-      "Connect your ESPN Fantasy Football league with its URL or League ID. No browser cookies or developer tools are needed; the league manager only needs to allow public viewability.",
+      "One commissioner connects ESPN with the League ID. Everyone else uses Join Team League with the commissioner's invite code. No browser cookies or developer tools are needed.",
     icon: <Users className="h-8 w-8 text-primary" />,
   },
   {
@@ -51,9 +51,9 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: "features",
-    title: "Explore Powerful Features",
+    title: "Explore Current and Past Seasons",
     description:
-      "Commissioners can tap Import History once. Then everyone can switch seasons in Matchups, explore career records, and revisit old rivalries across the full archive.",
+      "Commissioners can import past standings and champions. Weekly scores appear only when ESPN provides them, and career totals wait until renamed teams and co-managers have been reviewed.",
     icon: <TrendingUp className="h-8 w-8 text-primary" />,
   },
 ];

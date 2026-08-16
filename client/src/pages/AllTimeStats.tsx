@@ -130,7 +130,7 @@ export default function AllTimeStats({
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-full" />
-            ) : sortedByPoints[0] ? (
+            ) : (sortedByPoints[0]?.allTimePointsFor || 0) > 0 ? (
               <>
                 <div className="text-2xl font-bold text-card-foreground">
                   {sortedByPoints[0].name}
@@ -140,7 +140,9 @@ export default function AllTimeStats({
                 </p>
               </>
             ) : (
-              <div className="text-sm text-muted-foreground">No data</div>
+              <div className="text-sm text-muted-foreground">
+                No weekly score data
+              </div>
             )}
           </CardContent>
         </Card>
@@ -153,7 +155,7 @@ export default function AllTimeStats({
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-full" />
-            ) : highestScoringGame ? (
+            ) : (highestScoringGame?.highestScore || 0) > 0 ? (
               <>
                 <div className="text-2xl font-bold text-card-foreground">
                   {highestScoringGame.highestScore.toFixed(1)}
@@ -163,7 +165,9 @@ export default function AllTimeStats({
                 </p>
               </>
             ) : (
-              <div className="text-sm text-muted-foreground">No data</div>
+              <div className="text-sm text-muted-foreground">
+                No weekly score data
+              </div>
             )}
           </CardContent>
         </Card>
@@ -226,14 +230,22 @@ export default function AllTimeStats({
                       </TableCell>
                       <TableCell className="text-center">{winPct}%</TableCell>
                       <TableCell className="text-right">
-                        {team.allTimePointsFor.toFixed(1)}
+                        {team.allTimePointsFor > 0
+                          ? team.allTimePointsFor.toFixed(1)
+                          : "—"}
                       </TableCell>
-                      <TableCell className="text-right">{avgPF}</TableCell>
+                      <TableCell className="text-right">
+                        {team.allTimePointsFor > 0 ? avgPF : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-green-500">
-                        {team.highestScore.toFixed(1)}
+                        {team.highestScore > 0
+                          ? team.highestScore.toFixed(1)
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-right text-red-500">
-                        {team.lowestScore.toFixed(1)}
+                        {team.lowestScore > 0
+                          ? team.lowestScore.toFixed(1)
+                          : "—"}
                       </TableCell>
                     </TableRow>
                   );

@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useRestartTutorial } from "@/components/OnboardingTutorial";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -37,7 +37,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const restartTutorial = useRestartTutorial();
   const utils = trpc.useUtils();
 
@@ -54,6 +54,13 @@ export default function Dashboard() {
   const [newName, setNewName] = useState("");
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
+
+  useEffect(() => {
+    if (location.includes("join=1")) {
+      setJoinDialogOpen(true);
+      setLocation("/dashboard", { replace: true });
+    }
+  }, [location, setLocation]);
 
   const joinMutation = trpc.league.join.useMutation({
     onSuccess: result => {
@@ -188,17 +195,17 @@ export default function Dashboard() {
               <Button variant="outline" onClick={restartTutorial} size="sm">
                 Tutorial
               </Button>
-              <Button onClick={() => setLocation("/setup")} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add League
+              <Button onClick={() => setJoinDialogOpen(true)} size="sm">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Join Team League
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setJoinDialogOpen(true)}
+                onClick={() => setLocation("/setup")}
                 size="sm"
               >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Join Team League
+                <Plus className="mr-2 h-4 w-4" />
+                Set Up League
               </Button>
             </div>
           </div>
@@ -338,18 +345,34 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
+              <div className="py-8 text-center sm:py-12">
                 <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2 text-card-foreground">
                   No leagues yet
                 </h3>
-                <p className="text-muted-foreground mb-4">
-                  Connect your ESPN Fantasy Football league to get started
+                <p className="mx-auto mb-6 max-w-xl text-muted-foreground">
+                  Choose the path that matches your role. Most league members
+                  join with the code provided by their commissioner.
                 </p>
-                <Button onClick={() => setLocation("/setup")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Your First League
-                </Button>
+                <div className="mx-auto grid max-w-xl gap-3 sm:grid-cols-2">
+                  <Button
+                    size="lg"
+                    onClick={() => setJoinDialogOpen(true)}
+                    className="h-auto min-h-14 whitespace-normal py-3"
+                  >
+                    <UserPlus className="mr-2 h-5 w-5 shrink-0" />I have an
+                    invite code
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => setLocation("/setup")}
+                    className="h-auto min-h-14 whitespace-normal py-3"
+                  >
+                    <Plus className="mr-2 h-5 w-5 shrink-0" />I am setting up
+                    the league
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

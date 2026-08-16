@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appRouter } from "./routers";
+import { appRouter, ensureLeagueSetupAccess } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -45,6 +45,13 @@ describe("league.list", () => {
 });
 
 describe("league.sync validation", () => {
+  it("directs members to the invite-code flow for an existing league", () => {
+    expect(() => ensureLeagueSetupAccess(99, 1)).toThrow(
+      /Join Team League.*invite code/i
+    );
+    expect(() => ensureLeagueSetupAccess(1, 1)).not.toThrow();
+  });
+
   it("returns error for invalid ESPN credentials", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);

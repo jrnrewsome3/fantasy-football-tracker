@@ -297,13 +297,14 @@ const historicalData: FaqItem[] = [
   },
   {
     id: "history-team-count",
-    question: "Why does the all-time team count look too high?",
+    question: "Why are career totals or the owner leaderboard paused?",
     answer: (
       <p>
-        Before cleanup, each renamed team can look like a separate franchise.
-        Connect those names with the same franchise key in Clean Up History.
-        Repeated names are grouped automatically, but renamed franchises need a
-        commissioner to confirm the relationship.
+        Each renamed team can look like a separate franchise until a
+        commissioner reviews it. The app pauses career totals instead of showing
+        a misleading leaderboard. Connect historical names with the correct
+        franchise keys and managers in Clean Up History, then save the
+        assignments.
       </p>
     ),
   },
@@ -388,6 +389,18 @@ const accessAndPrivacy: FaqItem[] = [
 ];
 
 const troubleshooting: FaqItem[] = [
+  {
+    id: "trouble-join",
+    question:
+      "I signed in, but connecting the League ID says it is already connected. What do I do?",
+    answer: (
+      <p>
+        Your login worked. You are on the commissioner setup path for a league
+        that already has a commissioner. Return to the dashboard, select Join
+        Team League, and enter the invite code shared by that commissioner.
+      </p>
+    ),
+  },
   {
     id: "trouble-sync",
     question: "Why is the league sync failing?",
