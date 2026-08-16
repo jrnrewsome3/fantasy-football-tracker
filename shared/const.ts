@@ -8,4 +8,4 @@ export const NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
  * standings, matchups, rosters, and sync are unaffected. Flip to true to
  * restore the history screens once seasons are validated.
  */
-export const HISTORY_ENABLED = false;
+export const HISTORY_ENABLED = true;
