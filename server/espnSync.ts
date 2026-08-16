@@ -255,6 +255,12 @@ export async function syncWeekMatchups(
     let matchupsSynced = 0;
     let playersSynced = 0;
 
+    // A matchup is complete when its week is behind ESPN's active scoring
+    // period (or the whole season is archived) — a nonzero score only means
+    // the game is underway, not finished.
+    const isArchivedSeason = seasonYear < league.seasonYear;
+    const isPastWeek = week < Math.max(1, league.currentWeek || 1);
+
     for (const box of boxscores) {
       // Upsert matchup
       await upsertMatchup({
@@ -267,7 +273,7 @@ export async function syncWeekMatchups(
         awayScore: box.awayScore,
         homeProjected: box.homeProjectedScore,
         awayProjected: box.awayProjectedScore,
-        isComplete: box.homeScore > 0 || box.awayScore > 0 ? 1 : 0,
+        isComplete: isArchivedSeason || isPastWeek ? 1 : 0,
         isPlayoffs: week > 14 ? 1 : 0,
       });
       matchupsSynced++;

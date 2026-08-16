@@ -67,13 +67,24 @@ export async function answerLeagueQuestion(
       return acc;
     }, {} as Record<number, typeof allMatchups>);
 
+    // Matchup rows store ESPN team ids; resolve teams by espnTeamId within
+    // the matching season, never by internal teams.id (a different id space).
+    const findTeam = (espnTeamId: number, seasonYear: number) =>
+      leagueTeams.find(
+        t => t.espnTeamId === espnTeamId && t.seasonYear === seasonYear
+      );
+    const currentTeams = leagueTeams.filter(
+      t => t.seasonYear === league[0].seasonYear
+    );
+
     // Calculate season-specific stats
     const seasonStats = Object.entries(matchupsBySeason).map(([year, matches]) => {
-      const teamSeasonStats = leagueTeams.map(team => {
-        const teamMatches = matches.filter(m => m.homeTeamId === team.id || m.awayTeamId === team.id);
+      const seasonTeams = leagueTeams.filter(t => t.seasonYear === Number(year));
+      const teamSeasonStats = seasonTeams.map(team => {
+        const teamMatches = matches.filter(m => m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId);
         let wins = 0, losses = 0, pointsFor = 0;
         teamMatches.forEach(m => {
-          if (m.homeTeamId === team.id) {
+          if (m.homeTeamId === team.espnTeamId) {
             pointsFor += m.homeScore || 0;
             if ((m.homeScore || 0) > (m.awayScore || 0)) wins++;
             else if ((m.homeScore || 0) < (m.awayScore || 0)) losses++;
@@ -93,8 +104,8 @@ export async function answerLeagueQuestion(
       .map(m => ({
         ...m,
         totalPoints: (m.homeScore || 0) + (m.awayScore || 0),
-        homeTeam: leagueTeams.find(t => t.id === m.homeTeamId)?.name,
-        awayTeam: leagueTeams.find(t => t.id === m.awayTeamId)?.name,
+        homeTeam: findTeam(m.homeTeamId, m.seasonYear)?.name,
+        awayTeam: findTeam(m.awayTeamId, m.seasonYear)?.name,
       }))
       .sort((a, b) => b.totalPoints - a.totalPoints)
       .slice(0, 10);
@@ -105,12 +116,12 @@ export async function answerLeagueQuestion(
 League Overview:
 - Name: ${league[0].name}
 - Current Season: ${league[0].seasonYear}
-- Total Teams: ${leagueTeams.length}
+- Total Teams: ${currentTeams.length}
 - Historical Seasons: ${Object.keys(matchupsBySeason).join(', ')}
 - Total Games Played: ${allMatchups.length}
 
 Current Season Teams (${league[0].seasonYear}):
-${leagueTeams.map(t => `- ${t.name} (${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''} record, ${(t.pointsFor || 0).toFixed(1)} PF, ${(t.pointsAgainst || 0).toFixed(1)} PA`).join('\n')}
+${currentTeams.map(t => `- ${t.name} (${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''} record, ${(t.pointsFor || 0).toFixed(1)} PF, ${(t.pointsAgainst || 0).toFixed(1)} PA`).join('\n')}
 
 Historical Season Leaders:
 ${seasonStats.map(s => `\n${s.year} Season Top 3:\n${s.stats.slice(0, 3).map((t, i) => `  ${i + 1}. ${t.team}: ${t.wins}-${t.losses}, ${t.pointsFor.toFixed(1)} PF`).join('\n')}`).join('\n')}
@@ -120,8 +131,8 @@ ${highScoringGames.slice(0, 5).map((g, i) => `${i + 1}. Week ${g.week} ${g.seaso
 
 Recent Matchups (Last 15):
 ${allMatchups.slice(-15).map(m => {
-  const homeTeam = leagueTeams.find(t => t.id === m.homeTeamId);
-  const awayTeam = leagueTeams.find(t => t.id === m.awayTeamId);
+  const homeTeam = findTeam(m.homeTeamId, m.seasonYear);
+  const awayTeam = findTeam(m.awayTeamId, m.seasonYear);
   return `Week ${m.week} (${m.seasonYear}): ${homeTeam?.name || 'Unknown'} ${m.homeScore} vs ${awayTeam?.name || 'Unknown'} ${m.awayScore}`;
 }).join('\n')}
 

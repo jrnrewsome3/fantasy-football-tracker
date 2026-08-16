@@ -69,9 +69,16 @@ export const appRouter = router({
           input.seasonYear,
           input.currentWeek
         );
-        if (result.success) {
-          const league = await getLeagueByEspnId(input.espnLeagueId);
-          if (league) await claimLeagueForCommissioner(league.id, ctx.user.id);
+        // Claim whenever a league row exists for this user, even after a
+        // partial sync failure — an unclaimed league with no members would
+        // otherwise block every league endpoint until a full sync succeeds.
+        const league = await getLeagueByEspnId(input.espnLeagueId);
+        if (
+          league &&
+          (!league.commissionerUserId ||
+            league.commissionerUserId === ctx.user.id)
+        ) {
+          await claimLeagueForCommissioner(league.id, ctx.user.id);
         }
         return result;
       }),
@@ -93,9 +100,13 @@ export const appRouter = router({
           await requireCommissioner(existing.id, ctx.user.id);
         const { syncAllSeasons } = await import("./espnMultiSeasonSync");
         const result = await syncAllSeasons(input.espnLeagueId);
-        if (result.success) {
-          const league = await getLeagueByEspnId(input.espnLeagueId);
-          if (league) await claimLeagueForCommissioner(league.id, ctx.user.id);
+        const league = await getLeagueByEspnId(input.espnLeagueId);
+        if (
+          league &&
+          (!league.commissionerUserId ||
+            league.commissionerUserId === ctx.user.id)
+        ) {
+          await claimLeagueForCommissioner(league.id, ctx.user.id);
         }
         return result;
       }),
