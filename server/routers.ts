@@ -214,16 +214,48 @@ export const appRouter = router({
     weekOutlook: protectedProcedure
       .input(z.object({ leagueId: z.number() }))
       .query(async ({ input, ctx }) => {
-        const { requireLeagueAccess } = await import("./leagueAccess");
-        const { getLeagueById } = await import("./leagueDb");
+        const { requireLeagueAccess, getLeagueMembership } = await import(
+          "./leagueAccess"
+        );
+        const { getLeagueById, getRosterForTeamWeek } = await import(
+          "./leagueDb"
+        );
         const { getNFLWeekOutlook } = await import("./weather");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const league = await getLeagueById(input.leagueId);
         if (!league) throw new Error("League not found");
-        return getNFLWeekOutlook(
-          league.seasonYear,
-          Math.max(1, league.currentWeek || 1)
+
+        const week = Math.max(1, league.currentWeek || 1);
+        const games = await getNFLWeekOutlook(league.seasonYear, week);
+
+        // Annotate each NFL game with the viewer's own players, so the page
+        // can lead with the games that actually affect their lineup.
+        const membership = await getLeagueMembership(
+          input.leagueId,
+          ctx.user.id
         );
+        const roster = membership?.espnTeamId
+          ? await getRosterForTeamWeek(
+              input.leagueId,
+              league.seasonYear,
+              week,
+              membership.espnTeamId
+            )
+          : [];
+
+        return {
+          week,
+          hasRoster: roster.length > 0,
+          rosterWeek: roster[0]?.week ?? null,
+          games: games.map(game => ({
+            ...game,
+            myPlayers: roster.filter(
+              p =>
+                p.nflTeam &&
+                (p.nflTeam === game.homeTeam || p.nflTeam === game.awayTeam)
+            ),
+          })),
+        };
       }),
 
     // Get teams for a league

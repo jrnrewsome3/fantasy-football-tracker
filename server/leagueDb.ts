@@ -511,6 +511,68 @@ export async function replaceAvailablePlayers(
   }
 }
 
+/**
+ * The players on one fantasy team for a week, newest week that actually has
+ * roster data. Rosters arrive with boxscores, so the requested week can be
+ * empty before kickoff — falling back keeps the view useful in the preseason
+ * and on a Tuesday rather than showing nothing.
+ */
+export async function getRosterForTeamWeek(
+  leagueId: number,
+  seasonYear: number,
+  week: number,
+  espnTeamId: number
+): Promise<
+  Array<{
+    name: string;
+    position: string | null;
+    nflTeam: string | null;
+    status: string | null;
+    slotPosition: string | null;
+    wasStarted: boolean;
+    week: number;
+  }>
+> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({ stat: playerStats, player: players })
+    .from(playerStats)
+    .innerJoin(players, eq(playerStats.playerId, players.id))
+    .where(
+      and(
+        eq(playerStats.leagueId, leagueId),
+        eq(playerStats.seasonYear, seasonYear),
+        eq(playerStats.teamId, espnTeamId)
+      )
+    );
+
+  if (!rows.length) return [];
+
+  // Prefer the requested week; otherwise the latest week we have.
+  const weeksAvailable = rows.map(r => r.stat.week);
+  const targetWeek = weeksAvailable.includes(week)
+    ? week
+    : Math.max(...weeksAvailable);
+
+  return rows
+    .filter(r => r.stat.week === targetWeek)
+    .map(r => ({
+      name: r.player.name,
+      position: r.player.position,
+      nflTeam: r.player.nflTeam,
+      status: r.player.status,
+      slotPosition: r.stat.slotPosition,
+      wasStarted: r.stat.wasStarted === 1,
+      week: r.stat.week,
+    }))
+    .sort(
+      (a, b) => Number(b.wasStarted) - Number(a.wasStarted) ||
+        (a.slotPosition || "").localeCompare(b.slotPosition || "")
+    );
+}
+
 export async function getAvailablePlayers(
   leagueId: number,
   limit = 100,

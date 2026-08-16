@@ -64,6 +64,7 @@ export default function LeagueDetail() {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"single" | "alltime">("single");
   const [showHistoryHelp, setShowHistoryHelp] = useState(false);
+  const [weatherMineOnly, setWeatherMineOnly] = useState(true);
   const requestedSeason =
     typeof window !== "undefined"
       ? Number(new URLSearchParams(window.location.search).get("season"))
@@ -795,9 +796,20 @@ export default function LeagueDetail() {
                 {weatherLoading ? (
                   <Skeleton className="h-64 w-full" />
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {weekOutlook?.map(game => (
-                      <div key={game.id} className="rounded-lg border p-4">
+                  (() => {
+                    const games = weekOutlook?.games || [];
+                    const mine = games.filter(g => g.myPlayers.length > 0);
+                    const rest = games.filter(g => g.myPlayers.length === 0);
+                    const showMineOnly = weatherMineOnly && mine.length > 0;
+
+                    const card = (
+                      game: (typeof games)[number],
+                      highlight: boolean
+                    ) => (
+                      <div
+                        key={game.id}
+                        className={`rounded-lg border p-4 ${highlight ? "border-primary/50 bg-primary/5" : ""}`}
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <strong>{game.matchup}</strong>
                           <span className="text-xs text-muted-foreground">
@@ -821,9 +833,88 @@ export default function LeagueDetail() {
                             ? ` • ${game.precipitationChance}% precipitation`
                             : ""}
                         </p>
+                        {game.myPlayers.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-3">
+                            {game.myPlayers.map(p => (
+                              <span
+                                key={p.name}
+                                className={`rounded px-2 py-0.5 text-xs ${
+                                  p.wasStarted
+                                    ? "bg-primary/15 font-medium text-primary"
+                                    : "bg-muted text-muted-foreground"
+                                }`}
+                                title={
+                                  p.wasStarted
+                                    ? `Starting at ${p.slotPosition}`
+                                    : "On your bench"
+                                }
+                              >
+                                {p.name}
+                                {p.position ? ` · ${p.position}` : ""}
+                                {p.status && p.status !== "ACTIVE"
+                                  ? ` · ${p.status}`
+                                  : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+
+                    return (
+                      <div className="space-y-5">
+                        {weekOutlook?.hasRoster ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+                              <Button
+                                variant={showMineOnly ? "default" : "ghost"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => setWeatherMineOnly(true)}
+                              >
+                                My players ({mine.length})
+                              </Button>
+                              <Button
+                                variant={!showMineOnly ? "default" : "ghost"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => setWeatherMineOnly(false)}
+                              >
+                                All games ({games.length})
+                              </Button>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              Highlighted games have your players in them
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Once rosters sync you can filter this to only the
+                            games your own players are in.
+                          </p>
+                        )}
+
+                        {showMineOnly ? (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {mine.map(game => card(game, true))}
+                          </div>
+                        ) : (
+                          <>
+                            {mine.length > 0 && (
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {mine.map(game => card(game, true))}
+                              </div>
+                            )}
+                            {rest.length > 0 && (
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {rest.map(game => card(game, false))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
               </CardContent>
             </Card>
