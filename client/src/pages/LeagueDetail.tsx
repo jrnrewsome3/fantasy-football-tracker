@@ -52,6 +52,7 @@ import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
 import AllPlayStandings from "./AllPlayStandings";
 import MyWeek from "./MyWeek";
+import NewsletterPage from "./NewsletterPage";
 import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -717,6 +718,13 @@ export default function LeagueDetail() {
                 Game Weather
               </TabsTrigger>
               <TabsTrigger
+                value="newsletter"
+                className="text-xs sm:text-sm px-3 sm:px-4"
+              >
+                Newsletter
+              </TabsTrigger>
+
+              <TabsTrigger
                 value="ai"
                 className="text-xs sm:text-sm px-3 sm:px-4"
               >
@@ -1192,6 +1200,15 @@ export default function LeagueDetail() {
             )}
           </TabsContent>
           )}
+
+          <TabsContent value="newsletter">
+            <NewsletterPage
+              leagueId={leagueId}
+              currentWeek={Math.max(1, league.currentWeek || 1)}
+              seasons={availableSeasons}
+              currentSeason={league.seasonYear}
+            />
+          </TabsContent>
 
           <TabsContent value="ai" className="space-y-4">
             <AIQueryBox leagueId={leagueId} />

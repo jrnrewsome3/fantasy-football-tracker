@@ -465,6 +465,28 @@ export const appRouter = router({
         return await getSeasonSummaries(input.espnLeagueId);
       }),
 
+    // League newsletter, written from verified facts, ready to paste in chat
+    newsletter: protectedProcedure
+      .input(
+        z.object({
+          leagueId: z.number(),
+          kind: z.enum(["preview", "recap"]),
+          week: z.number().int().min(1).max(20),
+          seasonYear: z.number().int().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        await requireLeagueAccess(input.leagueId, ctx.user.id);
+        const { generateNewsletter } = await import("./newsletter");
+        return generateNewsletter(
+          input.leagueId,
+          input.kind,
+          input.week,
+          input.seasonYear
+        );
+      }),
+
     // Everything one manager needs before lineups lock, in one payload
     myWeek: protectedProcedure
       .input(z.object({ leagueId: z.number() }))
