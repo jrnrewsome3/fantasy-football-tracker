@@ -68,9 +68,16 @@ export default function HistoricalHighlights() {
   }
 
   // Filter matchups by season
-  const filteredMatchups = selectedSeason === "all" 
+  const seasonMatchups = selectedSeason === "all"
     ? allMatchups || []
     : (allMatchups || []).filter(m => m.seasonYear.toString() === selectedSeason);
+
+  // Single-game records must only compare like with like. Early seasons scored
+  // a playoff round over two weeks and recorded one combined total, so those
+  // matchups would win every "highest score" list by default without having
+  // been a bigger week. They get their own section below.
+  const filteredMatchups = seasonMatchups.filter(m => (m.scoringWeeks ?? 1) === 1);
+  const multiWeekMatchups = seasonMatchups.filter(m => (m.scoringWeeks ?? 1) > 1);
 
   // Get unique seasons
   const seasons = Array.from(new Set((allMatchups || []).map(m => m.seasonYear))).sort((a, b) => b - a);

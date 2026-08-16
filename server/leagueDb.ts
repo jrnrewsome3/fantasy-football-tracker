@@ -2,7 +2,7 @@
  * Database operations for leagues, teams, players, and stats
  */
 
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import {
   leagues,
   League,
@@ -251,27 +251,32 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
   if (!db) return null;
 
   try {
-    await db
-      .insert(teams)
-      .values(team)
-      .onDuplicateKeyUpdate({
-        set: {
-          name: team.name,
-          abbreviation: team.abbreviation,
-          logoUrl: team.logoUrl,
-          ownerName: team.ownerName,
-          franchiseKey: team.franchiseKey,
-          historySource: team.historySource,
-          userId: team.userId,
-          wins: team.wins,
-          losses: team.losses,
-          ties: team.ties,
-          pointsFor: team.pointsFor,
-          pointsAgainst: team.pointsAgainst,
-          seasonYear: team.seasonYear,
-          updatedAt: new Date(),
-        },
-      });
+    // A team's name changes freely — mid-season, after a draft — so it can
+    // never identify a franchise. franchiseKey (the person) is what career
+    // records group by, so a routine sync must never overwrite an established
+    // mapping with whatever ESPN currently reports.
+    const set: Record<string, unknown> = {
+      name: team.name,
+      abbreviation: team.abbreviation,
+      logoUrl: team.logoUrl,
+      historySource: team.historySource,
+      userId: team.userId,
+      wins: team.wins,
+      losses: team.losses,
+      ties: team.ties,
+      pointsFor: team.pointsFor,
+      pointsAgainst: team.pointsAgainst,
+      seasonYear: team.seasonYear,
+      updatedAt: new Date(),
+    };
+    if (team.franchiseKey != null) set.franchiseKey = team.franchiseKey;
+    // Only fill in an owner when one is not already recorded, so a curated
+    // league nickname survives the next refresh.
+    if (team.ownerName != null) {
+      set.ownerName = sql`COALESCE(${teams.ownerName}, ${team.ownerName})`;
+    }
+
+    await db.insert(teams).values(team).onDuplicateKeyUpdate({ set });
 
     const result = await db
       .select()
@@ -904,6 +909,7 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
       string,
       {
         ownerName: string;
+        latestSeason: number;
         totalWins: number;
         totalLosses: number;
         totalTies: number;
@@ -918,9 +924,13 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     >();
 
     for (const { teams: team } of allTeams) {
-      if (!team.ownerName) continue;
+      // Group by the person, not by a display name. Owner labels and team
+      // names both change between seasons; franchiseKey is the stable
+      // identity, so a rename can never split one person into two rows.
+      const identity = team.franchiseKey || team.ownerName;
+      if (!identity) continue;
 
-      const existing = ownerStatsMap.get(team.ownerName);
+      const existing = ownerStatsMap.get(identity);
       const wins = team.wins || 0;
       const losses = team.losses || 0;
       const ties = team.ties || 0;
@@ -946,9 +956,16 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
           existing.worstSeasonWins = wins;
           existing.worstSeasonYear = team.seasonYear;
         }
+
+        // Prefer the label from the most recent season this person played.
+        if (team.seasonYear > existing.latestSeason && team.ownerName) {
+          existing.ownerName = team.ownerName;
+          existing.latestSeason = team.seasonYear;
+        }
       } else {
-        ownerStatsMap.set(team.ownerName, {
-          ownerName: team.ownerName,
+        ownerStatsMap.set(identity, {
+          ownerName: team.ownerName || identity,
+          latestSeason: team.seasonYear,
           totalWins: wins,
           totalLosses: losses,
           totalTies: ties,
