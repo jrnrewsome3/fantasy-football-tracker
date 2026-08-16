@@ -42,6 +42,7 @@ export default function NewsletterPage({
   const [season, setSeason] = useState(currentSeason);
   const [copied, setCopied] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
+  const [plainText, setPlainText] = useState(true);
 
   const generate = trpc.league.newsletter.useMutation({
     onError: error =>
@@ -50,9 +51,27 @@ export default function NewsletterPage({
       }),
   });
 
+  /**
+   * Most group chats (iMessage, WhatsApp, GroupMe) do not render markdown, so
+   * the asterisks and hashes would be pasted in literally. Strip them down to
+   * clean text unless the destination is somewhere that renders it.
+   */
+  const toPlainText = (markdown: string) =>
+    markdown
+      .replace(/^#{1,6}\s*(.+)$/gm, (_, heading) => heading.toUpperCase())
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/^[-*]\s+/gm, "• ")
+      .replace(/`(.+?)`/g, "$1")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
   const copy = async () => {
     if (!generate.data?.markdown) return;
-    await navigator.clipboard.writeText(generate.data.markdown);
+    const text = plainText
+      ? toPlainText(generate.data.markdown)
+      : generate.data.markdown;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success("Copied — paste it into the league chat");
     setTimeout(() => setCopied(false), 2500);
@@ -147,19 +166,48 @@ export default function NewsletterPage({
                   {generate.data.kind === "preview" ? "preview" : "recap"} ·{" "}
                   {generate.data.seasonYear}
                 </p>
-                <Button variant="outline" size="sm" onClick={copy}>
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                  {copied ? "Copied" : "Copy"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+                    <Button
+                      variant={plainText ? "default" : "ghost"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setPlainText(true)}
+                      title="For iMessage, WhatsApp, GroupMe — anywhere that shows asterisks as asterisks"
+                    >
+                      Plain text
+                    </Button>
+                    <Button
+                      variant={!plainText ? "default" : "ghost"}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setPlainText(false)}
+                      title="For Discord, Slack, or anywhere that renders markdown"
+                    >
+                      Markdown
+                    </Button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={copy}>
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
               </div>
 
               <div className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed text-card-foreground">
-                {generate.data.markdown}
+                {plainText
+                  ? toPlainText(generate.data.markdown)
+                  : generate.data.markdown}
               </div>
+              <p className="text-xs text-muted-foreground">
+                {plainText
+                  ? "Plain text — safe for iMessage, WhatsApp and GroupMe. This is exactly what will paste."
+                  : "Markdown — use this for Discord or Slack, where bold and headings render."}
+              </p>
 
               <div>
                 <Button
