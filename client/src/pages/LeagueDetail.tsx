@@ -47,7 +47,7 @@ import {
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
-import { HISTORY_ENABLED } from "@shared/const";
+import { HISTORY_ENABLED, LEGACY_HISTORY_TOOLS } from "@shared/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
 import AIQueryBox from "@/components/AIQueryBox";
@@ -430,12 +430,12 @@ export default function LeagueDetail() {
                   <Copy className="h-4 w-4" /> Invite Members
                 </Button>
               )}
-              {HISTORY_ENABLED && league.userRole === "commissioner" && (
+              {LEGACY_HISTORY_TOOLS && league.userRole === "commissioner" && (
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    historyMutation.mutate({
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                historyMutation.mutate({
                       espnLeagueId: league.espnLeagueId,
                     })
                   }
@@ -447,7 +447,7 @@ export default function LeagueDetail() {
                   {historyMutation.isPending ? "Importing…" : "Import History"}
                 </Button>
               )}
-              {HISTORY_ENABLED && league.userRole === "commissioner" && (
+              {LEGACY_HISTORY_TOOLS && league.userRole === "commissioner" && (
                 <label>
                   <Button
                     variant="outline"
@@ -471,7 +471,7 @@ export default function LeagueDetail() {
                   />
                 </label>
               )}
-              {HISTORY_ENABLED &&
+              {LEGACY_HISTORY_TOOLS &&
                 league.userRole === "commissioner" &&
                 availableSeasons.length > 1 && (
                   <Button
@@ -499,7 +499,7 @@ export default function LeagueDetail() {
               )}
             </div>
 
-            {showHistoryHelp && league.userRole === "commissioner" && (
+            {LEGACY_HISTORY_TOOLS && showHistoryHelp && league.userRole === "commissioner" && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                 <p className="font-semibold text-card-foreground">
                   ESPN has the archive locked
@@ -584,7 +584,7 @@ export default function LeagueDetail() {
       </div>
 
       <div className="container py-6 sm:py-8">
-        {HISTORY_ENABLED && historyNeedsCleanup && (
+        {LEGACY_HISTORY_TOOLS && historyNeedsCleanup && (
           <Card className="mb-6 border-amber-500/40 bg-amber-500/10">
             <CardHeader>
               <CardTitle className="text-base">
@@ -863,14 +863,14 @@ export default function LeagueDetail() {
                             size="sm"
                             onClick={() => setViewMode("alltime")}
                             className="text-xs"
-                            disabled={historyNeedsCleanup}
+                            disabled={LEGACY_HISTORY_TOOLS && historyNeedsCleanup}
                             title={
-                              historyNeedsCleanup
+                              LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                                 ? "Review historical team identities before calculating career totals"
                                 : undefined
                             }
                           >
-                            {historyNeedsCleanup
+                            {LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                               ? "All-Time (review first)"
                               : "All-Time"}
                           </Button>
@@ -952,19 +952,19 @@ export default function LeagueDetail() {
                           <TableRow
                             key={team.id}
                             className={
-                              !HISTORY_ENABLED || historyNeedsCleanup
+                              !HISTORY_ENABLED || (LEGACY_HISTORY_TOOLS && historyNeedsCleanup)
                                 ? ""
                                 : "cursor-pointer hover:bg-accent/50"
                             }
                             onClick={() => {
-                              if (HISTORY_ENABLED && !historyNeedsCleanup) {
+                              if (HISTORY_ENABLED && !(LEGACY_HISTORY_TOOLS && historyNeedsCleanup)) {
                                 setLocation(
                                   `/team/${team.espnTeamId}/${league.espnLeagueId}/history`
                                 );
                               }
                             }}
                             title={
-                              HISTORY_ENABLED && historyNeedsCleanup
+                              LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                                 ? "Team career history will unlock after historical cleanup"
                                 : undefined
                             }
@@ -1049,7 +1049,7 @@ export default function LeagueDetail() {
 
           {HISTORY_ENABLED && (
           <TabsContent value="alltime" className="space-y-4">
-            {historyNeedsCleanup ? (
+            {LEGACY_HISTORY_TOOLS && historyNeedsCleanup ? (
               <Card className="border-amber-500/40 bg-amber-500/10">
                 <CardHeader>
                   <CardTitle>Career totals are waiting for cleanup</CardTitle>

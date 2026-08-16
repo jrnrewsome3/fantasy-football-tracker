@@ -20,7 +20,7 @@ import SignUpPage from "./pages/SignUp";
 import HistoryOwnership from "./pages/HistoryOwnership";
 import HistoryUnavailable from "./pages/HistoryUnavailable";
 import OnboardingTutorial from "./components/OnboardingTutorial";
-import { HISTORY_ENABLED } from "@shared/const";
+import { HISTORY_ENABLED, LEGACY_HISTORY_TOOLS } from "@shared/const";
 import type { ComponentType } from "react";
 
 function Router() {
@@ -51,7 +51,9 @@ function Router() {
       <Route path={"/league/:id/recap"} component={WeeklyRecap} />
       <Route
         path={"/league/:id/history-ownership"}
-        component={history(HistoryOwnership)}
+        component={
+          LEGACY_HISTORY_TOOLS ? history(HistoryOwnership) : HistoryUnavailable
+        }
       />
       <Route
         path={"/team/:espnTeamId/:espnLeagueId/history"}
