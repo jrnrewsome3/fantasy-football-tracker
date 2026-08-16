@@ -465,6 +465,16 @@ export const appRouter = router({
         return await getSeasonSummaries(input.espnLeagueId);
       }),
 
+    // Everything one manager needs before lineups lock, in one payload
+    myWeek: protectedProcedure
+      .input(z.object({ leagueId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        await requireLeagueAccess(input.leagueId, ctx.user.id);
+        const { getMyWeek } = await import("./myWeek");
+        return getMyWeek(input.leagueId, ctx.user.id);
+      }),
+
     // All-play records: how much of a record was schedule rather than scoring
     allPlay: protectedProcedure
       .input(

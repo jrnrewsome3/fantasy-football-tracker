@@ -51,6 +51,7 @@ import { HISTORY_ENABLED, LEGACY_HISTORY_TOOLS } from "@shared/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
 import AllPlayStandings from "./AllPlayStandings";
+import MyWeek from "./MyWeek";
 import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -678,6 +679,12 @@ export default function LeagueDetail() {
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <TabsList className="w-full sm:w-auto inline-flex min-w-max">
               <TabsTrigger
+                value="myweek"
+                className="text-xs sm:text-sm px-3 sm:px-4"
+              >
+                My Week
+              </TabsTrigger>
+              <TabsTrigger
                 value="standings"
                 className="text-xs sm:text-sm px-3 sm:px-4"
               >
@@ -723,6 +730,10 @@ export default function LeagueDetail() {
               </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="myweek">
+            <MyWeek leagueId={leagueId} />
+          </TabsContent>
 
           <TabsContent value="available">
             <Card>
