@@ -307,11 +307,30 @@ export const appRouter = router({
         const { requireLeagueAccess } = await import("./leagueAccess");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const { getMatchupsByWeek } = await import("./leagueDb");
-        return await getMatchupsByWeek(
+        const week = await getMatchupsByWeek(
           input.leagueId,
           input.week,
           input.seasonYear
         );
+
+        // Attach the all-time series between the two managers, so a live
+        // matchup carries the history behind it.
+        const { getMatchupSeries } = await import("./rivalry");
+        const series = await getMatchupSeries(
+          input.leagueId,
+          week.map(m => ({
+            seasonYear: m.seasonYear,
+            homeTeamId: m.homeTeamId,
+            awayTeamId: m.awayTeamId,
+          }))
+        );
+
+        return week.map(m => ({
+          ...m,
+          series:
+            series.get(`${m.seasonYear}:${m.homeTeamId}:${m.awayTeamId}`) ??
+            null,
+        }));
       }),
 
     // Get all matchups for a league

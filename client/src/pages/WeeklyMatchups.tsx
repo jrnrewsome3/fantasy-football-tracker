@@ -246,6 +246,49 @@ export default function WeeklyMatchups({
                         </div>
                       </div>
                     )}
+
+                    {/* All-time history between these two managers */}
+                    {matchup.series && matchup.series.meetings > 0 && (
+                      <div className="border-t bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:px-4">
+                        <span className="font-medium text-card-foreground">
+                          {matchup.series.leader === "even"
+                            ? `All-time series tied ${matchup.series.homeWins}–${matchup.series.awayWins}`
+                            : `${
+                                matchup.series.leader === "home"
+                                  ? getTeamName(matchup.homeTeamId)
+                                  : getTeamName(matchup.awayTeamId)
+                              } leads ${Math.max(
+                                matchup.series.homeWins,
+                                matchup.series.awayWins
+                              )}–${Math.min(
+                                matchup.series.homeWins,
+                                matchup.series.awayWins
+                              )}`}
+                        </span>
+                        <span> in {matchup.series.meetings} meetings</span>
+                        {matchup.series.streak &&
+                          matchup.series.streak.count > 1 && (
+                            <span>
+                              {" · "}
+                              {matchup.series.streak.key === "home"
+                                ? getTeamName(matchup.homeTeamId)
+                                : getTeamName(matchup.awayTeamId)}{" "}
+                              has won {matchup.series.streak.count} straight
+                            </span>
+                          )}
+                        {matchup.series.lastMeeting && (
+                          <span>
+                            {" · "}last met {matchup.series.lastMeeting.seasonYear}
+                            {matchup.series.lastMeeting.isPlayoffs
+                              ? " playoffs"
+                              : ` week ${matchup.series.lastMeeting.week}`}
+                            {", "}
+                            {matchup.series.lastMeeting.homeScore.toFixed(1)}–
+                            {matchup.series.lastMeeting.awayScore.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
