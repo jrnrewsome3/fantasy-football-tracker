@@ -355,7 +355,7 @@ export async function getTeamsByLeagueAndSeason(
 
 export async function getTeamsByEspnLeagueAllTime(
   espnLeagueId: string
-): Promise<Team[]> {
+): Promise<Array<Team & { espnTeamIds: number[] }>> {
   const db = await getDb();
   if (!db) return [];
 
@@ -367,8 +367,10 @@ export async function getTeamsByEspnLeagueAllTime(
     .where(eq(leagues.espnLeagueId, espnLeagueId));
 
   // Group by a commissioner-cleaned franchise key when available. Public ESPN
-  // data falls back to the durable ESPN team ID.
-  const teamMap = new Map<string, Team>();
+  // data falls back to the durable ESPN team ID. Every team id the person has
+  // played under is kept, because matchups reference per-season ids and a
+  // career lookup must match all of them.
+  const teamMap = new Map<string, Team & { espnTeamIds: number[] }>();
 
   for (const row of allTeams) {
     const team = row.teams;
@@ -376,8 +378,11 @@ export async function getTeamsByEspnLeagueAllTime(
     const existing = teamMap.get(franchiseKey);
 
     if (!existing) {
-      teamMap.set(franchiseKey, { ...team });
+      teamMap.set(franchiseKey, { ...team, espnTeamIds: [team.espnTeamId] });
     } else {
+      if (!existing.espnTeamIds.includes(team.espnTeamId)) {
+        existing.espnTeamIds.push(team.espnTeamId);
+      }
       // Aggregate career stats for same espnTeamId
       existing.wins = (existing.wins || 0) + (team.wins || 0);
       existing.losses = (existing.losses || 0) + (team.losses || 0);

@@ -38,10 +38,16 @@ export default function AllTimeStats({
   // Calculate all-time records
   const allTimeRecords =
     teams?.map(team => {
+      // A person has played under several team ids across seasons; matchups
+      // reference the per-season id, so career lookups match all of them.
+      const ids = new Set(
+        "espnTeamIds" in team && Array.isArray(team.espnTeamIds)
+          ? team.espnTeamIds
+          : [team.espnTeamId]
+      );
       const teamMatchups =
         allMatchups?.filter(
-          m =>
-            m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId
+          m => ids.has(m.homeTeamId) || ids.has(m.awayTeamId)
         ) || [];
 
       let totalWins = 0;
@@ -51,7 +57,7 @@ export default function AllTimeStats({
       let lowestScore = 999;
 
       teamMatchups.forEach(matchup => {
-        const isHome = matchup.homeTeamId === team.espnTeamId;
+        const isHome = ids.has(matchup.homeTeamId);
         const teamScore = isHome
           ? matchup.homeScore || 0
           : matchup.awayScore || 0;
@@ -64,8 +70,14 @@ export default function AllTimeStats({
           else if (teamScore < oppScore) totalLosses++;
 
           totalPointsFor += teamScore;
-          if (teamScore > highestScore) highestScore = teamScore;
-          if (teamScore < lowestScore && teamScore > 0) lowestScore = teamScore;
+          // Single-game records only consider single-week matchups: early
+          // playoff rounds were scored over two combined weeks, and a
+          // two-week total is not a "highest score" against one-week games.
+          if ((matchup.scoringWeeks ?? 1) === 1) {
+            if (teamScore > highestScore) highestScore = teamScore;
+            if (teamScore < lowestScore && teamScore > 0)
+              lowestScore = teamScore;
+          }
         }
       });
 

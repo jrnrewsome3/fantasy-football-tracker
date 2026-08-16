@@ -99,8 +99,11 @@ export async function answerLeagueQuestion(
       return { year, stats: teamSeasonStats };
     });
 
-    // Find highest scoring games
+    // Find highest scoring games. Only completed single-week games qualify:
+    // early playoff rounds were scored over two combined weeks and would
+    // otherwise top every list without being a bigger week.
     const highScoringGames = allMatchups
+      .filter(m => m.isComplete && (m.scoringWeeks ?? 1) === 1)
       .map(m => ({
         ...m,
         totalPoints: (m.homeScore || 0) + (m.awayScore || 0),

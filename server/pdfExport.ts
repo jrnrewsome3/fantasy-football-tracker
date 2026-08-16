@@ -89,9 +89,13 @@ export async function generateLeagueStatsMarkdown(
       return { year, stats: teamSeasonStats };
     }).sort((a, b) => parseInt(b.year) - parseInt(a.year));
 
-    // Find highlights
-    const highestScoringGame = allMatchups.length > 0
-      ? allMatchups.reduce((max, m) => {
+    // Find highlights. Only completed single-week games qualify — a two-week
+    // playoff total is not comparable with one-week scores.
+    const recordEligible = allMatchups.filter(
+      m => m.isComplete && (m.scoringWeeks ?? 1) === 1
+    );
+    const highestScoringGame = recordEligible.length > 0
+      ? recordEligible.reduce((max, m) => {
           const total = (m.homeScore || 0) + (m.awayScore || 0);
           const maxTotal = (max.homeScore || 0) + (max.awayScore || 0);
           return total > maxTotal ? m : max;
