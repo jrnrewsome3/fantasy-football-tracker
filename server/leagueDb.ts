@@ -978,10 +978,15 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
       const identity = team.franchiseKey || team.ownerName;
       if (!identity) continue;
 
-      const existing = ownerStatsMap.get(identity);
       const wins = team.wins || 0;
       const losses = team.losses || 0;
       const ties = team.ties || 0;
+
+      // A season with no games yet (the upcoming year before kickoff) counts
+      // toward nothing — no seasons played, no zeros dragging down averages.
+      if (wins + losses + ties === 0 && !(team.pointsFor || 0)) continue;
+
+      const existing = ownerStatsMap.get(identity);
       const pf = team.pointsFor || 0;
       const pa = team.pointsAgainst || 0;
 

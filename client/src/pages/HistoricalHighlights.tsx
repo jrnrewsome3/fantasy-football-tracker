@@ -67,10 +67,15 @@ export default function HistoricalHighlights() {
     );
   }
 
+  // Records only consider games that were actually played — an unplayed
+  // 0-0 fixture from the upcoming season would otherwise be the "closest
+  // game" and "lowest score" in league history.
+  const playedMatchups = (allMatchups || []).filter(m => m.isComplete);
+
   // Filter matchups by season
   const seasonMatchups = selectedSeason === "all"
-    ? allMatchups || []
-    : (allMatchups || []).filter(m => m.seasonYear.toString() === selectedSeason);
+    ? playedMatchups
+    : playedMatchups.filter(m => m.seasonYear.toString() === selectedSeason);
 
   // Single-game records must only compare like with like. Early seasons scored
   // a playoff round over two weeks and recorded one combined total, so those
