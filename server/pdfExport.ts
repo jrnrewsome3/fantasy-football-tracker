@@ -41,8 +41,19 @@ export async function generateLeagueStatsMarkdown(
     const teams = await getTeamsByLeague(leagueId);
     const allMatchups = await getAllMatchupsByLeague(leagueId);
 
+    // Matchup rows store ESPN team ids; resolve teams by espnTeamId within
+    // the matching season, never by internal teams.id (a different id space).
+    const findTeam = (espnTeamId: number, seasonYear: number) =>
+      teams.find(
+        t => t.espnTeamId === espnTeamId && t.seasonYear === seasonYear
+      );
+
+    // Current standings cover the active season only; `teams` holds one row
+    // per team per season.
+    const currentTeams = teams.filter(t => t.seasonYear === league.seasonYear);
+
     // Sort teams by record
-    const sortedTeams = teams.sort((a, b) => {
+    const sortedTeams = currentTeams.sort((a, b) => {
       const aWinPct = (a.wins || 0) / ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)) || 0;
       const bWinPct = (b.wins || 0) / ((b.wins || 0) + (b.losses || 0) + (b.ties || 0)) || 0;
       if (aWinPct !== bWinPct) return bWinPct - aWinPct;
@@ -58,11 +69,12 @@ export async function generateLeagueStatsMarkdown(
 
     // Calculate season stats
     const seasonStats = Object.entries(matchupsBySeason).map(([year, matches]) => {
-      const teamSeasonStats = teams.map(team => {
-        const teamMatches = matches.filter(m => m.homeTeamId === team.id || m.awayTeamId === team.id);
+      const seasonTeams = teams.filter(t => t.seasonYear === Number(year));
+      const teamSeasonStats = seasonTeams.map(team => {
+        const teamMatches = matches.filter(m => m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId);
         let wins = 0, losses = 0, pointsFor = 0;
         teamMatches.forEach(m => {
-          if (m.homeTeamId === team.id) {
+          if (m.homeTeamId === team.espnTeamId) {
             pointsFor += m.homeScore || 0;
             if ((m.homeScore || 0) > (m.awayScore || 0)) wins++;
             else if ((m.homeScore || 0) < (m.awayScore || 0)) losses++;
@@ -90,7 +102,7 @@ export async function generateLeagueStatsMarkdown(
     let markdown = `# ${league.name}\n## League Stats Report\n\n`;
     markdown += `**Season:** ${league.seasonYear}  \n`;
     markdown += `**Week:** ${league.currentWeek} of ${league.totalWeeks}  \n`;
-    markdown += `**Total Teams:** ${teams.length}  \n`;
+    markdown += `**Total Teams:** ${currentTeams.length}  \n`;
     markdown += `**Generated:** ${new Date().toLocaleDateString()}  \n\n`;
 
     markdown += `---\n\n## Current Standings\n\n`;
@@ -115,8 +127,14 @@ export async function generateLeagueStatsMarkdown(
 
     if (highestScoringGame) {
       markdown += `---\n\n## League Highlights\n\n`;
-      const homeTeam = teams.find(t => t.id === highestScoringGame.homeTeamId);
-      const awayTeam = teams.find(t => t.id === highestScoringGame.awayTeamId);
+      const homeTeam = findTeam(
+        highestScoringGame.homeTeamId,
+        highestScoringGame.seasonYear
+      );
+      const awayTeam = findTeam(
+        highestScoringGame.awayTeamId,
+        highestScoringGame.seasonYear
+      );
       const totalPoints = (highestScoringGame.homeScore || 0) + (highestScoringGame.awayScore || 0);
       markdown += `**Highest Scoring Game:**  \n`;
       markdown += `Week ${highestScoringGame.week}, ${highestScoringGame.seasonYear}  \n`;

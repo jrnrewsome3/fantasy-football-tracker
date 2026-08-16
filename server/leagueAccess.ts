@@ -27,7 +27,32 @@ export async function requireLeagueAccess(leagueId: number, userId: number) {
 }
 
 export async function requireCommissioner(leagueId: number, userId: number) {
-  const membership = await requireLeagueAccess(leagueId, userId);
+  let membership = await getLeagueMembership(leagueId, userId);
+
+  // Self-heal: a league can end up claimed by a user whose membership row is
+  // missing (a claim or delete that failed partway). The recorded
+  // commissioner must never be locked out of their own league.
+  if (!membership) {
+    const db = await getDb();
+    if (db) {
+      const leagueRows = await db
+        .select()
+        .from(leagues)
+        .where(eq(leagues.id, leagueId))
+        .limit(1);
+      if (leagueRows[0]?.commissionerUserId === userId) {
+        await db
+          .insert(leagueMembers)
+          .values({ leagueId, userId, role: "commissioner" })
+          .onDuplicateKeyUpdate({
+            set: { role: "commissioner", updatedAt: new Date() },
+          });
+        membership = await getLeagueMembership(leagueId, userId);
+      }
+    }
+  }
+
+  if (!membership) throw new Error("You do not have access to this league");
   if (membership.role !== "commissioner") {
     throw new Error("Only the league commissioner can perform this action");
   }
@@ -54,22 +79,26 @@ export async function claimLeagueForCommissioner(
     );
   }
 
+  // The claim must be atomic: a league whose commissionerUserId is set but
+  // whose membership row is missing locks everyone out of the league.
   const inviteCode = league.inviteCode || nanoid(12);
-  await db
-    .update(leagues)
-    .set({ commissionerUserId: userId, inviteCode, updatedAt: new Date() })
-    .where(eq(leagues.id, leagueId));
+  await db.transaction(async tx => {
+    await tx
+      .update(leagues)
+      .set({ commissionerUserId: userId, inviteCode, updatedAt: new Date() })
+      .where(eq(leagues.id, leagueId));
 
-  await db
-    .insert(leagueMembers)
-    .values({
-      leagueId,
-      userId,
-      role: "commissioner",
-    })
-    .onDuplicateKeyUpdate({
-      set: { role: "commissioner", updatedAt: new Date() },
-    });
+    await tx
+      .insert(leagueMembers)
+      .values({
+        leagueId,
+        userId,
+        role: "commissioner",
+      })
+      .onDuplicateKeyUpdate({
+        set: { role: "commissioner", updatedAt: new Date() },
+      });
+  });
 
   return { inviteCode };
 }

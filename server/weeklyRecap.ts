@@ -62,13 +62,15 @@ export async function generateWeeklyRecap(
     throw new Error(`No matchups found for week ${week} of ${seasonYear} season`);
   }
 
-  // Fetch all teams for this league
+  // Fetch this season's teams. Matchup rows store ESPN team ids, so the
+  // lookup must be keyed by espnTeamId within the same season — never by the
+  // internal teams.id, which is a different id space.
   const allTeams = await db
     .select()
     .from(teams)
-    .where(eq(teams.leagueId, leagueId));
+    .where(and(eq(teams.leagueId, leagueId), eq(teams.seasonYear, seasonYear)));
 
-  const teamMap = new Map(allTeams.map(t => [t.id, t]));
+  const teamMap = new Map(allTeams.map(t => [t.espnTeamId, t]));
 
   // Analyze matchups
   const matchupData = weekMatchups.map(m => {

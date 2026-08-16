@@ -2,7 +2,7 @@
  * Database operations for leagues, teams, players, and stats
  */
 
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import {
   leagues,
   League,
@@ -180,28 +180,33 @@ export async function deleteLeague(
   if (!db) return { success: false, message: "Database not available" };
 
   try {
-    // Delete all related data first (cascade)
-    // Note: teamAllTimeStats links to teamId, not leagueId
-    // We need to delete stats for teams in this league
-    const leagueTeams = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.leagueId, leagueId));
-    for (const team of leagueTeams) {
-      await db
-        .delete(teamAllTimeStats)
-        .where(eq(teamAllTimeStats.teamId, team.id));
-    }
+    // Delete everything in one transaction: a partial delete would leave a
+    // league whose members are gone but whose claim survives, locking the
+    // commissioner out on reconnect.
+    await db.transaction(async tx => {
+      // Note: teamAllTimeStats links to teamId, not leagueId
+      const leagueTeams = await tx
+        .select()
+        .from(teams)
+        .where(eq(teams.leagueId, leagueId));
+      for (const team of leagueTeams) {
+        await tx
+          .delete(teamAllTimeStats)
+          .where(eq(teamAllTimeStats.teamId, team.id));
+      }
 
-    await db.delete(playerStats).where(eq(playerStats.leagueId, leagueId));
-    await db
-      .delete(leagueAvailablePlayers)
-      .where(eq(leagueAvailablePlayers.leagueId, leagueId));
-    await db.delete(transactions).where(eq(transactions.leagueId, leagueId));
-    await db.delete(matchups).where(eq(matchups.leagueId, leagueId));
-    await db.delete(teams).where(eq(teams.leagueId, leagueId));
-    await db.delete(leagueMembers).where(eq(leagueMembers.leagueId, leagueId));
-    await db.delete(leagues).where(eq(leagues.id, leagueId));
+      await tx.delete(playerStats).where(eq(playerStats.leagueId, leagueId));
+      await tx
+        .delete(leagueAvailablePlayers)
+        .where(eq(leagueAvailablePlayers.leagueId, leagueId));
+      await tx.delete(transactions).where(eq(transactions.leagueId, leagueId));
+      await tx.delete(matchups).where(eq(matchups.leagueId, leagueId));
+      await tx.delete(teams).where(eq(teams.leagueId, leagueId));
+      await tx
+        .delete(leagueMembers)
+        .where(eq(leagueMembers.leagueId, leagueId));
+      await tx.delete(leagues).where(eq(leagues.id, leagueId));
+    });
 
     return {
       success: true,
@@ -647,6 +652,33 @@ export async function insertTransaction(
   if (!db) return;
 
   try {
+    // ESPN's activity feed is re-ingested on every sync; skip events that are
+    // already stored so repeated syncs never duplicate transactions.
+    const playerMatch =
+      transaction.playerId == null
+        ? isNull(transactions.playerId)
+        : eq(transactions.playerId, transaction.playerId);
+    const playerNameMatch =
+      transaction.playerName == null
+        ? isNull(transactions.playerName)
+        : eq(transactions.playerName, transaction.playerName);
+    const existing = await db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.leagueId, transaction.leagueId),
+          eq(transactions.seasonYear, transaction.seasonYear),
+          eq(transactions.transactionType, transaction.transactionType),
+          eq(transactions.teamId, transaction.teamId),
+          eq(transactions.transactionDate, transaction.transactionDate),
+          playerMatch,
+          playerNameMatch
+        )
+      )
+      .limit(1);
+    if (existing.length > 0) return;
+
     await db.insert(transactions).values(transaction);
   } catch (error) {
     console.error("[LeagueDB] Error inserting transaction:", error);

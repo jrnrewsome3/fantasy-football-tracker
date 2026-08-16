@@ -110,10 +110,12 @@ export default function HistoricalHighlights() {
       : null,
   };
 
-  // Calculate team-based highlights
+  // Calculate team-based highlights. Matchup rows store ESPN team ids, so
+  // teams (one row per season) match on espnTeamId within their own season.
   const teamStats = teams?.map(team => {
-    const teamMatchups = filteredMatchups.filter(m => 
-      m.homeTeamId === team.id || m.awayTeamId === team.id
+    const teamMatchups = filteredMatchups.filter(m =>
+      m.seasonYear === team.seasonYear &&
+      (m.homeTeamId === team.espnTeamId || m.awayTeamId === team.espnTeamId)
     );
 
     let wins = 0, losses = 0, totalPoints = 0, highestScore = 0;
@@ -121,7 +123,7 @@ export default function HistoricalHighlights() {
     let lastResult: 'W' | 'L' | null = null;
 
     teamMatchups.forEach(m => {
-      const isHome = m.homeTeamId === team.id;
+      const isHome = m.homeTeamId === team.espnTeamId;
       const teamScore = isHome ? (m.homeScore || 0) : (m.awayScore || 0);
       const oppScore = isHome ? (m.awayScore || 0) : (m.homeScore || 0);
       
@@ -166,7 +168,9 @@ export default function HistoricalHighlights() {
   const longestStreak = teamStats.reduce((max, t) => t.longestWinStreak > max.longestWinStreak ? t : max, teamStats[0] || { longestWinStreak: 0 });
   const highestSingleGame = teamStats.reduce((max, t) => t.highestScore > max.highestScore ? t : max, teamStats[0] || { highestScore: 0 });
 
-  const getTeamName = (teamId: number) => teams?.find(t => t.id === teamId)?.name || "Unknown";
+  // Matchup team ids are ESPN ids; resolve within the matchup's season.
+  const getTeamName = (espnTeamId: number, seasonYear: number) =>
+    teams?.find(t => t.espnTeamId === espnTeamId && t.seasonYear === seasonYear)?.name || "Unknown";
 
   return (
     <div className="min-h-screen bg-background">
@@ -227,7 +231,7 @@ export default function HistoricalHighlights() {
                       size="sm"
                       onClick={() => shareHighlight(
                         "🔥 Highest Scoring Game!",
-                        `${getTeamName(highlights.highestScoringGame!.homeTeamId)} ${highlights.highestScoringGame!.homeScore} vs ${getTeamName(highlights.highestScoringGame!.awayTeamId)} ${highlights.highestScoringGame!.awayScore}\n${((highlights.highestScoringGame!.homeScore || 0) + (highlights.highestScoringGame!.awayScore || 0)).toFixed(1)} total points!\nWeek ${highlights.highestScoringGame!.week}, ${highlights.highestScoringGame!.seasonYear}`
+                        `${getTeamName(highlights.highestScoringGame!.homeTeamId, highlights.highestScoringGame!.seasonYear)} ${highlights.highestScoringGame!.homeScore} vs ${getTeamName(highlights.highestScoringGame!.awayTeamId, highlights.highestScoringGame!.seasonYear)} ${highlights.highestScoringGame!.awayScore}\n${((highlights.highestScoringGame!.homeScore || 0) + (highlights.highestScoringGame!.awayScore || 0)).toFixed(1)} total points!\nWeek ${highlights.highestScoringGame!.week}, ${highlights.highestScoringGame!.seasonYear}`
                       )}
                     >
                       <Share2 className="h-4 w-4" />
@@ -247,8 +251,8 @@ export default function HistoricalHighlights() {
                       Week {highlights.highestScoringGame.week}, {highlights.highestScoringGame.seasonYear}
                     </div>
                     <div className="text-sm">
-                      {getTeamName(highlights.highestScoringGame.homeTeamId)} {highlights.highestScoringGame.homeScore} vs{" "}
-                      {getTeamName(highlights.highestScoringGame.awayTeamId)} {highlights.highestScoringGame.awayScore}
+                      {getTeamName(highlights.highestScoringGame.homeTeamId, highlights.highestScoringGame.seasonYear)} {highlights.highestScoringGame.homeScore} vs{" "}
+                      {getTeamName(highlights.highestScoringGame.awayTeamId, highlights.highestScoringGame.seasonYear)} {highlights.highestScoringGame.awayScore}
                     </div>
                   </div>
                 ) : (
@@ -271,7 +275,7 @@ export default function HistoricalHighlights() {
                       size="sm"
                       onClick={() => shareHighlight(
                         "💥 Biggest Blowout!",
-                        `${getTeamName(highlights.biggestBlowout!.homeTeamId)} ${highlights.biggestBlowout!.homeScore} vs ${getTeamName(highlights.biggestBlowout!.awayTeamId)} ${highlights.biggestBlowout!.awayScore}\n${Math.abs((highlights.biggestBlowout!.homeScore || 0) - (highlights.biggestBlowout!.awayScore || 0)).toFixed(1)} point margin!\nWeek ${highlights.biggestBlowout!.week}, ${highlights.biggestBlowout!.seasonYear}`
+                        `${getTeamName(highlights.biggestBlowout!.homeTeamId, highlights.biggestBlowout!.seasonYear)} ${highlights.biggestBlowout!.homeScore} vs ${getTeamName(highlights.biggestBlowout!.awayTeamId, highlights.biggestBlowout!.seasonYear)} ${highlights.biggestBlowout!.awayScore}\n${Math.abs((highlights.biggestBlowout!.homeScore || 0) - (highlights.biggestBlowout!.awayScore || 0)).toFixed(1)} point margin!\nWeek ${highlights.biggestBlowout!.week}, ${highlights.biggestBlowout!.seasonYear}`
                       )}
                     >
                       <Share2 className="h-4 w-4" />
@@ -291,8 +295,8 @@ export default function HistoricalHighlights() {
                       Week {highlights.biggestBlowout.week}, {highlights.biggestBlowout.seasonYear}
                     </div>
                     <div className="text-sm">
-                      {getTeamName(highlights.biggestBlowout.homeTeamId)} {highlights.biggestBlowout.homeScore} vs{" "}
-                      {getTeamName(highlights.biggestBlowout.awayTeamId)} {highlights.biggestBlowout.awayScore}
+                      {getTeamName(highlights.biggestBlowout.homeTeamId, highlights.biggestBlowout.seasonYear)} {highlights.biggestBlowout.homeScore} vs{" "}
+                      {getTeamName(highlights.biggestBlowout.awayTeamId, highlights.biggestBlowout.seasonYear)} {highlights.biggestBlowout.awayScore}
                     </div>
                   </div>
                 ) : (
@@ -321,8 +325,8 @@ export default function HistoricalHighlights() {
                       Week {highlights.closestGame.week}, {highlights.closestGame.seasonYear}
                     </div>
                     <div className="text-sm">
-                      {getTeamName(highlights.closestGame.homeTeamId)} {highlights.closestGame.homeScore} vs{" "}
-                      {getTeamName(highlights.closestGame.awayTeamId)} {highlights.closestGame.awayScore}
+                      {getTeamName(highlights.closestGame.homeTeamId, highlights.closestGame.seasonYear)} {highlights.closestGame.homeScore} vs{" "}
+                      {getTeamName(highlights.closestGame.awayTeamId, highlights.closestGame.seasonYear)} {highlights.closestGame.awayScore}
                     </div>
                   </div>
                 ) : (
@@ -351,8 +355,8 @@ export default function HistoricalHighlights() {
                       Week {highlights.lowestScoringGame.week}, {highlights.lowestScoringGame.seasonYear}
                     </div>
                     <div className="text-sm">
-                      {getTeamName(highlights.lowestScoringGame.homeTeamId)} {highlights.lowestScoringGame.homeScore} vs{" "}
-                      {getTeamName(highlights.lowestScoringGame.awayTeamId)} {highlights.lowestScoringGame.awayScore}
+                      {getTeamName(highlights.lowestScoringGame.homeTeamId, highlights.lowestScoringGame.seasonYear)} {highlights.lowestScoringGame.homeScore} vs{" "}
+                      {getTeamName(highlights.lowestScoringGame.awayTeamId, highlights.lowestScoringGame.seasonYear)} {highlights.lowestScoringGame.awayScore}
                     </div>
                   </div>
                 ) : (

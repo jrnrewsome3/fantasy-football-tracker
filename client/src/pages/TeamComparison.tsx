@@ -79,11 +79,19 @@ export default function TeamComparison() {
   const team1 = teams?.find(t => t.id === team1Id);
   const team2 = teams?.find(t => t.id === team2Id);
 
+  // Matchup rows store ESPN team ids (stable for a franchise slot across
+  // seasons), so head-to-head history matches on espnTeamId — never on the
+  // internal teams.id used by the dropdowns.
+  const team1EspnId = team1?.espnTeamId;
+  const team2EspnId = team2?.espnTeamId;
+
   // Calculate head-to-head record
-  const h2hMatchups = matchups?.filter(m => 
-    (m.homeTeamId === team1Id && m.awayTeamId === team2Id) ||
-    (m.homeTeamId === team2Id && m.awayTeamId === team1Id)
-  ) || [];
+  const h2hMatchups = (team1EspnId != null && team2EspnId != null
+    ? matchups?.filter(m =>
+        (m.homeTeamId === team1EspnId && m.awayTeamId === team2EspnId) ||
+        (m.homeTeamId === team2EspnId && m.awayTeamId === team1EspnId)
+      )
+    : []) || [];
 
   let team1Wins = 0;
   let team2Wins = 0;
@@ -92,8 +100,8 @@ export default function TeamComparison() {
   let team2TotalPoints = 0;
 
   h2hMatchups.forEach(m => {
-    const team1Score = m.homeTeamId === team1Id ? m.homeScore : m.awayScore;
-    const team2Score = m.homeTeamId === team2Id ? m.homeScore : m.awayScore;
+    const team1Score = m.homeTeamId === team1EspnId ? m.homeScore : m.awayScore;
+    const team2Score = m.homeTeamId === team2EspnId ? m.homeScore : m.awayScore;
     
     team1TotalPoints += team1Score || 0;
     team2TotalPoints += team2Score || 0;
@@ -292,8 +300,8 @@ export default function TeamComparison() {
                       </TableHeader>
                       <TableBody>
                         {h2hMatchups.map((matchup) => {
-                          const team1Score = matchup.homeTeamId === team1Id ? matchup.homeScore : matchup.awayScore;
-                          const team2Score = matchup.homeTeamId === team2Id ? matchup.homeScore : matchup.awayScore;
+                          const team1Score = matchup.homeTeamId === team1EspnId ? matchup.homeScore : matchup.awayScore;
+                          const team2Score = matchup.homeTeamId === team2EspnId ? matchup.homeScore : matchup.awayScore;
                           const team1Won = (team1Score || 0) > (team2Score || 0);
                           const team2Won = (team2Score || 0) > (team1Score || 0);
                           

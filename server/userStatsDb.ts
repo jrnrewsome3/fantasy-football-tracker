@@ -3,7 +3,7 @@
  * Calculates overall win rate, streaks, and other user-level stats
  */
 
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { teams, matchups } from "../drizzle/schema";
 import { getDb } from "./db";
 
@@ -73,8 +73,13 @@ export async function getUserAggregateStats(): Promise<UserAggregateStats> {
     const totalGames = totalWins + totalLosses + totalTies;
     const overallWinRate = totalGames > 0 ? (totalWins / totalGames) * 100 : null;
 
-    // Calculate streaks by analyzing matchup history
-    const { longestWinStreak, longestLossStreak } = await calculateStreaks(allTeams.map(t => t.id));
+    // Calculate streaks by analyzing matchup history. Matchup rows store
+    // ESPN team ids, which repeat across leagues and seasons, so identify
+    // teams by the full (leagueId, seasonYear, espnTeamId) key.
+    const teamKeys = new Set(
+      allTeams.map(t => `${t.leagueId}:${t.seasonYear}:${t.espnTeamId}`)
+    );
+    const { longestWinStreak, longestLossStreak } = await calculateStreaks(teamKeys);
 
     return {
       totalLeagues,
@@ -103,30 +108,31 @@ export async function getUserAggregateStats(): Promise<UserAggregateStats> {
 
 /**
  * Calculate longest win and loss streaks from matchup history
- * @param teamIds - Array of team IDs to analyze
+ * @param teamKeys - Set of "leagueId:seasonYear:espnTeamId" keys to analyze
  * @returns Object with longestWinStreak and longestLossStreak
  */
-async function calculateStreaks(teamIds: number[]): Promise<{ longestWinStreak: number; longestLossStreak: number }> {
+async function calculateStreaks(teamKeys: Set<string>): Promise<{ longestWinStreak: number; longestLossStreak: number }> {
   const db = await getDb();
-  if (!db || teamIds.length === 0) {
+  if (!db || teamKeys.size === 0) {
     return { longestWinStreak: 0, longestLossStreak: 0 };
   }
 
   try {
-    // Get all matchups for these teams, ordered by season and week
+    // Get all matchups ordered by season and week; membership is checked per
+    // row because matchup team ids are ESPN ids scoped to league + season.
     const allMatchups = await db.select().from(matchups)
-      .where(
-        sql`${matchups.homeTeamId} IN (${sql.join(teamIds.map(id => sql`${id}`), sql`, `)}) 
-        OR ${matchups.awayTeamId} IN (${sql.join(teamIds.map(id => sql`${id}`), sql`, `)})`
-      )
       .orderBy(asc(matchups.seasonYear), asc(matchups.week));
 
     // Determine win/loss for each matchup
     const results: ('W' | 'L' | 'T')[] = [];
     for (const matchup of allMatchups) {
-      const isHome = teamIds.includes(matchup.homeTeamId);
-      const isAway = teamIds.includes(matchup.awayTeamId);
-      
+      const isHome = teamKeys.has(
+        `${matchup.leagueId}:${matchup.seasonYear}:${matchup.homeTeamId}`
+      );
+      const isAway = teamKeys.has(
+        `${matchup.leagueId}:${matchup.seasonYear}:${matchup.awayTeamId}`
+      );
+
       if (!isHome && !isAway) continue;
 
       const homeScore = matchup.homeScore || 0;

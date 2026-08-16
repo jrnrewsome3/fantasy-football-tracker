@@ -47,6 +47,7 @@ import {
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
+import { HISTORY_ENABLED } from "@shared/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
 import AIQueryBox from "@/components/AIQueryBox";
@@ -418,7 +419,7 @@ export default function LeagueDetail() {
                   <Copy className="h-4 w-4" /> Invite Members
                 </Button>
               )}
-              {league.userRole === "commissioner" && (
+              {HISTORY_ENABLED && league.userRole === "commissioner" && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -435,7 +436,7 @@ export default function LeagueDetail() {
                   {historyMutation.isPending ? "Importing…" : "Import History"}
                 </Button>
               )}
-              {league.userRole === "commissioner" && (
+              {HISTORY_ENABLED && league.userRole === "commissioner" && (
                 <label>
                   <Button
                     variant="outline"
@@ -459,7 +460,8 @@ export default function LeagueDetail() {
                   />
                 </label>
               )}
-              {league.userRole === "commissioner" &&
+              {HISTORY_ENABLED &&
+                league.userRole === "commissioner" &&
                 availableSeasons.length > 1 && (
                   <Button
                     variant="outline"
@@ -519,20 +521,24 @@ export default function LeagueDetail() {
               >
                 <FileText className="h-4 w-4" /> Weekly Recap
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLocation(`/league/${leagueId}/compare`)}
-              >
-                <GitCompare className="h-4 w-4" /> Compare
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLocation(`/league/${leagueId}/highlights`)}
-              >
-                <Trophy className="h-4 w-4" /> Highlights
-              </Button>
+              {HISTORY_ENABLED && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation(`/league/${leagueId}/compare`)}
+                >
+                  <GitCompare className="h-4 w-4" /> Compare
+                </Button>
+              )}
+              {HISTORY_ENABLED && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation(`/league/${leagueId}/highlights`)}
+                >
+                  <Trophy className="h-4 w-4" /> Highlights
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleExportPDF}>
                 <Download className="h-4 w-4" /> Export
               </Button>
@@ -567,7 +573,7 @@ export default function LeagueDetail() {
       </div>
 
       <div className="container py-6 sm:py-8">
-        {historyNeedsCleanup && (
+        {HISTORY_ENABLED && historyNeedsCleanup && (
           <Card className="mb-6 border-amber-500/40 bg-amber-500/10">
             <CardHeader>
               <CardTitle className="text-base">
@@ -670,12 +676,14 @@ export default function LeagueDetail() {
               >
                 Matchups
               </TabsTrigger>
-              <TabsTrigger
-                value="alltime"
-                className="text-xs sm:text-sm px-3 sm:px-4"
-              >
-                All-Time Stats
-              </TabsTrigger>
+              {HISTORY_ENABLED && (
+                <TabsTrigger
+                  value="alltime"
+                  className="text-xs sm:text-sm px-3 sm:px-4"
+                >
+                  All-Time Stats
+                </TabsTrigger>
+              )}
               <TabsTrigger
                 value="available"
                 className="text-xs sm:text-sm px-3 sm:px-4"
@@ -829,32 +837,34 @@ export default function LeagueDetail() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* View Mode Toggle */}
-                      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                        <Button
-                          variant={viewMode === "single" ? "default" : "ghost"}
-                          size="sm"
-                          onClick={() => setViewMode("single")}
-                          className="text-xs"
-                        >
-                          Single Season
-                        </Button>
-                        <Button
-                          variant={viewMode === "alltime" ? "default" : "ghost"}
-                          size="sm"
-                          onClick={() => setViewMode("alltime")}
-                          className="text-xs"
-                          disabled={historyNeedsCleanup}
-                          title={
-                            historyNeedsCleanup
-                              ? "Review historical team identities before calculating career totals"
-                              : undefined
-                          }
-                        >
-                          {historyNeedsCleanup
-                            ? "All-Time (review first)"
-                            : "All-Time"}
-                        </Button>
-                      </div>
+                      {HISTORY_ENABLED && (
+                        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                          <Button
+                            variant={viewMode === "single" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setViewMode("single")}
+                            className="text-xs"
+                          >
+                            Single Season
+                          </Button>
+                          <Button
+                            variant={viewMode === "alltime" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setViewMode("alltime")}
+                            className="text-xs"
+                            disabled={historyNeedsCleanup}
+                            title={
+                              historyNeedsCleanup
+                                ? "Review historical team identities before calculating career totals"
+                                : undefined
+                            }
+                          >
+                            {historyNeedsCleanup
+                              ? "All-Time (review first)"
+                              : "All-Time"}
+                          </Button>
+                        </div>
+                      )}
                       {/* Season Selector (only for single season mode) */}
                       {viewMode === "single" && availableSeasons.length > 1 && (
                         <div className="flex items-center gap-2">
@@ -931,19 +941,19 @@ export default function LeagueDetail() {
                           <TableRow
                             key={team.id}
                             className={
-                              historyNeedsCleanup
+                              !HISTORY_ENABLED || historyNeedsCleanup
                                 ? ""
                                 : "cursor-pointer hover:bg-accent/50"
                             }
                             onClick={() => {
-                              if (!historyNeedsCleanup) {
+                              if (HISTORY_ENABLED && !historyNeedsCleanup) {
                                 setLocation(
                                   `/team/${team.espnTeamId}/${league.espnLeagueId}/history`
                                 );
                               }
                             }}
                             title={
-                              historyNeedsCleanup
+                              HISTORY_ENABLED && historyNeedsCleanup
                                 ? "Team career history will unlock after historical cleanup"
                                 : undefined
                             }
@@ -1020,6 +1030,7 @@ export default function LeagueDetail() {
             />
           </TabsContent>
 
+          {HISTORY_ENABLED && (
           <TabsContent value="alltime" className="space-y-4">
             {historyNeedsCleanup ? (
               <Card className="border-amber-500/40 bg-amber-500/10">
@@ -1054,6 +1065,7 @@ export default function LeagueDetail() {
               />
             )}
           </TabsContent>
+          )}
 
           <TabsContent value="ai" className="space-y-4">
             <AIQueryBox leagueId={leagueId} />
