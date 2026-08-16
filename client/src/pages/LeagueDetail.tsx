@@ -50,6 +50,7 @@ import { getLoginUrl } from "@/const";
 import { HISTORY_ENABLED, LEGACY_HISTORY_TOOLS } from "@shared/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
+import AllPlayStandings from "./AllPlayStandings";
 import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -1167,10 +1168,16 @@ export default function LeagueDetail() {
                 </CardContent>
               </Card>
             ) : (
-              <AllTimeStats
-                leagueId={leagueId}
-                espnLeagueId={league.espnLeagueId}
-              />
+              <div className="space-y-4">
+                <AllTimeStats
+                  leagueId={leagueId}
+                  espnLeagueId={league.espnLeagueId}
+                />
+                <AllPlayStandings
+                  espnLeagueId={league.espnLeagueId}
+                  seasons={availableSeasons}
+                />
+              </div>
             )}
           </TabsContent>
           )}

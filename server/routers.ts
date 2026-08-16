@@ -446,6 +446,28 @@ export const appRouter = router({
         return await getSeasonSummaries(input.espnLeagueId);
       }),
 
+    // All-play records: how much of a record was schedule rather than scoring
+    allPlay: protectedProcedure
+      .input(
+        z.object({
+          espnLeagueId: z.string(),
+          seasonYear: z.number().int().optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        const { getLeagueByEspnId } = await import("./leagueDb");
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        const league = await getLeagueByEspnId(input.espnLeagueId);
+        if (!league) return [];
+        await requireLeagueAccess(league.id, ctx.user.id);
+        const { getAllPlayStandings, getSeasonAllPlay } = await import(
+          "./allPlay"
+        );
+        return input.seasonYear
+          ? getSeasonAllPlay(input.espnLeagueId, input.seasonYear)
+          : getAllPlayStandings(input.espnLeagueId);
+      }),
+
     // Get owner leaderboard with lifetime stats
     ownerLeaderboard: protectedProcedure
       .input(
