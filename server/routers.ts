@@ -214,16 +214,48 @@ export const appRouter = router({
     weekOutlook: protectedProcedure
       .input(z.object({ leagueId: z.number() }))
       .query(async ({ input, ctx }) => {
-        const { requireLeagueAccess } = await import("./leagueAccess");
-        const { getLeagueById } = await import("./leagueDb");
+        const { requireLeagueAccess, getLeagueMembership } = await import(
+          "./leagueAccess"
+        );
+        const { getLeagueById, getRosterForTeamWeek } = await import(
+          "./leagueDb"
+        );
         const { getNFLWeekOutlook } = await import("./weather");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const league = await getLeagueById(input.leagueId);
         if (!league) throw new Error("League not found");
-        return getNFLWeekOutlook(
-          league.seasonYear,
-          Math.max(1, league.currentWeek || 1)
+
+        const week = Math.max(1, league.currentWeek || 1);
+        const games = await getNFLWeekOutlook(league.seasonYear, week);
+
+        // Annotate each NFL game with the viewer's own players, so the page
+        // can lead with the games that actually affect their lineup.
+        const membership = await getLeagueMembership(
+          input.leagueId,
+          ctx.user.id
         );
+        const roster = membership?.espnTeamId
+          ? await getRosterForTeamWeek(
+              input.leagueId,
+              league.seasonYear,
+              week,
+              membership.espnTeamId
+            )
+          : [];
+
+        return {
+          week,
+          hasRoster: roster.length > 0,
+          rosterWeek: roster[0]?.week ?? null,
+          games: games.map(game => ({
+            ...game,
+            myPlayers: roster.filter(
+              p =>
+                p.nflTeam &&
+                (p.nflTeam === game.homeTeam || p.nflTeam === game.awayTeam)
+            ),
+          })),
+        };
       }),
 
     // Get teams for a league
@@ -275,11 +307,30 @@ export const appRouter = router({
         const { requireLeagueAccess } = await import("./leagueAccess");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const { getMatchupsByWeek } = await import("./leagueDb");
-        return await getMatchupsByWeek(
+        const week = await getMatchupsByWeek(
           input.leagueId,
           input.week,
           input.seasonYear
         );
+
+        // Attach the all-time series between the two managers, so a live
+        // matchup carries the history behind it.
+        const { getMatchupSeries } = await import("./rivalry");
+        const series = await getMatchupSeries(
+          input.leagueId,
+          week.map(m => ({
+            seasonYear: m.seasonYear,
+            homeTeamId: m.homeTeamId,
+            awayTeamId: m.awayTeamId,
+          }))
+        );
+
+        return week.map(m => ({
+          ...m,
+          series:
+            series.get(`${m.seasonYear}:${m.homeTeamId}:${m.awayTeamId}`) ??
+            null,
+        }));
       }),
 
     // Get all matchups for a league
@@ -412,6 +463,60 @@ export const appRouter = router({
         if (!league) return [];
         await requireLeagueAccess(league.id, ctx.user.id);
         return await getSeasonSummaries(input.espnLeagueId);
+      }),
+
+    // League newsletter, written from verified facts, ready to paste in chat
+    newsletter: protectedProcedure
+      .input(
+        z.object({
+          leagueId: z.number(),
+          kind: z.enum(["preview", "recap", "season"]),
+          week: z.number().int().min(1).max(20),
+          seasonYear: z.number().int().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        await requireLeagueAccess(input.leagueId, ctx.user.id);
+        const { generateNewsletter } = await import("./newsletter");
+        return generateNewsletter(
+          input.leagueId,
+          input.kind,
+          input.week,
+          input.seasonYear
+        );
+      }),
+
+    // Everything one manager needs before lineups lock, in one payload
+    myWeek: protectedProcedure
+      .input(z.object({ leagueId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        await requireLeagueAccess(input.leagueId, ctx.user.id);
+        const { getMyWeek } = await import("./myWeek");
+        return getMyWeek(input.leagueId, ctx.user.id);
+      }),
+
+    // All-play records: how much of a record was schedule rather than scoring
+    allPlay: protectedProcedure
+      .input(
+        z.object({
+          espnLeagueId: z.string(),
+          seasonYear: z.number().int().optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        const { getLeagueByEspnId } = await import("./leagueDb");
+        const { requireLeagueAccess } = await import("./leagueAccess");
+        const league = await getLeagueByEspnId(input.espnLeagueId);
+        if (!league) return [];
+        await requireLeagueAccess(league.id, ctx.user.id);
+        const { getAllPlayStandings, getSeasonAllPlay } = await import(
+          "./allPlay"
+        );
+        return input.seasonYear
+          ? getSeasonAllPlay(input.espnLeagueId, input.seasonYear)
+          : getAllPlayStandings(input.espnLeagueId);
       }),
 
     // Get owner leaderboard with lifetime stats

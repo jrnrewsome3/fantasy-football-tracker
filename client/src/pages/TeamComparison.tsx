@@ -15,8 +15,8 @@ export default function TeamComparison() {
   const [, params] = useRoute("/league/:id/compare");
   
   const leagueId = params?.id ? parseInt(params.id) : 0;
-  const [team1Id, setTeam1Id] = useState<number | null>(null);
-  const [team2Id, setTeam2Id] = useState<number | null>(null);
+  const [team1Key, setTeam1Key] = useState<string | null>(null);
+  const [team2Key, setTeam2Key] = useState<string | null>(null);
 
   const { data: leagues } = trpc.league.list.useQuery(undefined, {
     enabled: !!user,
@@ -31,7 +31,7 @@ export default function TeamComparison() {
 
   const { data: matchups } = trpc.league.allMatchups.useQuery(
     { leagueId },
-    { enabled: !!user && leagueId > 0 && !!team1Id && !!team2Id }
+    { enabled: !!user && leagueId > 0 && !!team1Key && !!team2Key }
   );
 
   if (authLoading) {
@@ -76,20 +76,76 @@ export default function TeamComparison() {
     );
   }
 
-  const team1 = teams?.find(t => t.id === team1Id);
-  const team2 = teams?.find(t => t.id === team2Id);
+  // The comparison is between PEOPLE, not team rows. `teams` holds one row
+  // per person per season (team names change constantly), so rows are folded
+  // into one entry per franchiseKey with career totals and every team id that
+  // person has ever played under.
+  interface Person {
+    key: string;
+    label: string;
+    latestSeason: number;
+    ids: Set<number>;
+    seasons: Set<number>;
+    wins: number;
+    losses: number;
+    ties: number;
+    pointsFor: number;
+    pointsAgainst: number;
+  }
 
-  // Matchup rows store ESPN team ids (stable for a franchise slot across
-  // seasons), so head-to-head history matches on espnTeamId — never on the
-  // internal teams.id used by the dropdowns.
-  const team1EspnId = team1?.espnTeamId;
-  const team2EspnId = team2?.espnTeamId;
+  const peopleMap = new Map<string, Person>();
+  for (const t of teams || []) {
+    const key = t.franchiseKey || t.ownerName || t.name;
+    if (!key) continue;
+    let person = peopleMap.get(key);
+    if (!person) {
+      person = {
+        key,
+        label: t.ownerName || t.name,
+        latestSeason: t.seasonYear,
+        ids: new Set(),
+        seasons: new Set(),
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+      };
+      peopleMap.set(key, person);
+    }
+    person.ids.add(t.espnTeamId);
+    // A season with no games yet (the upcoming year) shouldn't count toward
+    // career totals or seasons played.
+    const played =
+      (t.wins || 0) + (t.losses || 0) + (t.ties || 0) > 0 ||
+      (t.pointsFor || 0) > 0;
+    if (played) {
+      person.seasons.add(t.seasonYear);
+      person.wins += t.wins || 0;
+      person.losses += t.losses || 0;
+      person.ties += t.ties || 0;
+      person.pointsFor += t.pointsFor || 0;
+      person.pointsAgainst += t.pointsAgainst || 0;
+    }
+    if (t.seasonYear > person.latestSeason && t.ownerName) {
+      person.label = t.ownerName;
+      person.latestSeason = t.seasonYear;
+    }
+  }
+  const people = Array.from(peopleMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
 
-  // Calculate head-to-head record
-  const h2hMatchups = (team1EspnId != null && team2EspnId != null
-    ? matchups?.filter(m =>
-        (m.homeTeamId === team1EspnId && m.awayTeamId === team2EspnId) ||
-        (m.homeTeamId === team2EspnId && m.awayTeamId === team1EspnId)
+  const person1 = team1Key ? peopleMap.get(team1Key) : undefined;
+  const person2 = team2Key ? peopleMap.get(team2Key) : undefined;
+
+  // Every completed meeting between the two people, across all seasons.
+  const h2hMatchups = (person1 && person2
+    ? matchups?.filter(
+        m =>
+          m.isComplete &&
+          ((person1.ids.has(m.homeTeamId) && person2.ids.has(m.awayTeamId)) ||
+            (person2.ids.has(m.homeTeamId) && person1.ids.has(m.awayTeamId)))
       )
     : []) || [];
 
@@ -100,9 +156,9 @@ export default function TeamComparison() {
   let team2TotalPoints = 0;
 
   h2hMatchups.forEach(m => {
-    const team1Score = m.homeTeamId === team1EspnId ? m.homeScore : m.awayScore;
-    const team2Score = m.homeTeamId === team2EspnId ? m.homeScore : m.awayScore;
-    
+    const team1Score = person1!.ids.has(m.homeTeamId) ? m.homeScore : m.awayScore;
+    const team2Score = person2!.ids.has(m.homeTeamId) ? m.homeScore : m.awayScore;
+
     team1TotalPoints += team1Score || 0;
     team2TotalPoints += team2Score || 0;
 
@@ -128,31 +184,31 @@ export default function TeamComparison() {
           <div>
             <h1 className="text-3xl font-bold text-card-foreground">Team Comparison</h1>
             <p className="text-muted-foreground mt-1">
-              Compare head-to-head records and statistics between two teams
+              Compare career records and head-to-head history between two owners
             </p>
           </div>
 
           {/* Team Selectors */}
           <Card>
             <CardHeader>
-              <CardTitle>Select Teams to Compare</CardTitle>
-              <CardDescription>Choose two teams to view their matchup history</CardDescription>
+              <CardTitle>Select Owners to Compare</CardTitle>
+              <CardDescription>Choose two owners to view their all-time matchup history</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-card-foreground">Team 1</label>
+                  <label className="text-sm font-medium text-card-foreground">Owner 1</label>
                   <Select
-                    value={team1Id?.toString() || ''}
-                    onValueChange={(value) => setTeam1Id(parseInt(value))}
+                    value={team1Key || ''}
+                    onValueChange={setTeam1Key}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select first team" />
+                      <SelectValue placeholder="Select first owner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {teams?.filter(t => t.id !== team2Id).map((team) => (
-                        <SelectItem key={team.id} value={team.id.toString()}>
-                          {team.name}
+                      {people.filter(p => p.key !== team2Key).map(p => (
+                        <SelectItem key={p.key} value={p.key}>
+                          {p.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -160,18 +216,18 @@ export default function TeamComparison() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-card-foreground">Team 2</label>
+                  <label className="text-sm font-medium text-card-foreground">Owner 2</label>
                   <Select
-                    value={team2Id?.toString() || ''}
-                    onValueChange={(value) => setTeam2Id(parseInt(value))}
+                    value={team2Key || ''}
+                    onValueChange={setTeam2Key}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select second team" />
+                      <SelectValue placeholder="Select second owner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {teams?.filter(t => t.id !== team1Id).map((team) => (
-                        <SelectItem key={team.id} value={team.id.toString()}>
-                          {team.name}
+                      {people.filter(p => p.key !== team1Key).map(p => (
+                        <SelectItem key={p.key} value={p.key}>
+                          {p.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -182,18 +238,18 @@ export default function TeamComparison() {
           </Card>
 
           {/* Comparison Results */}
-          {team1 && team2 && (
+          {person1 && person2 && (
             <>
               {/* Head-to-Head Record */}
               <Card>
                 <CardHeader>
                   <CardTitle>Head-to-Head Record</CardTitle>
-                  <CardDescription>All-time matchup history between these teams</CardDescription>
+                  <CardDescription>All-time matchup history between these owners, every season included</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">{team1.name}</p>
+                      <p className="text-sm text-muted-foreground">{person1.label}</p>
                       <p className="text-4xl font-bold text-green-500">{team1Wins}</p>
                       <p className="text-xs text-muted-foreground">Wins</p>
                     </div>
@@ -202,7 +258,7 @@ export default function TeamComparison() {
                       <p className="text-sm text-muted-foreground">{ties} Ties</p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">{team2.name}</p>
+                      <p className="text-sm text-muted-foreground">{person2.label}</p>
                       <p className="text-4xl font-bold text-green-500">{team2Wins}</p>
                       <p className="text-xs text-muted-foreground">Wins</p>
                     </div>
@@ -214,30 +270,30 @@ export default function TeamComparison() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{team1.name}</CardTitle>
+                    <CardTitle>{person1.label}</CardTitle>
                     <CardDescription>Overall Statistics</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Overall Record</span>
                       <span className="font-semibold text-card-foreground">
-                        {team1.wins}-{team1.losses}-{team1.ties}
+                        {person1.wins}-{person1.losses}-{person1.ties}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Points For</span>
                       <span className="font-semibold text-card-foreground">
-                        {(team1.pointsFor || 0).toFixed(1)}
+                        {person1.pointsFor.toFixed(1)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Points Against</span>
                       <span className="font-semibold text-card-foreground">
-                        {(team1.pointsAgainst || 0).toFixed(1)}
+                        {person1.pointsAgainst.toFixed(1)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Avg vs {team2.name}</span>
+                      <span className="text-sm text-muted-foreground">Avg vs {person2.label}</span>
                       <span className="font-semibold text-card-foreground">
                         {team1AvgPoints.toFixed(1)} pts/game
                       </span>
@@ -247,30 +303,30 @@ export default function TeamComparison() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>{team2.name}</CardTitle>
+                    <CardTitle>{person2.label}</CardTitle>
                     <CardDescription>Overall Statistics</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Overall Record</span>
                       <span className="font-semibold text-card-foreground">
-                        {team2.wins}-{team2.losses}-{team2.ties}
+                        {person2.wins}-{person2.losses}-{person2.ties}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Points For</span>
                       <span className="font-semibold text-card-foreground">
-                        {(team2.pointsFor || 0).toFixed(1)}
+                        {person2.pointsFor.toFixed(1)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Points Against</span>
                       <span className="font-semibold text-card-foreground">
-                        {(team2.pointsAgainst || 0).toFixed(1)}
+                        {person2.pointsAgainst.toFixed(1)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Avg vs {team1.name}</span>
+                      <span className="text-sm text-muted-foreground">Avg vs {person1.label}</span>
                       <span className="font-semibold text-card-foreground">
                         {team2AvgPoints.toFixed(1)} pts/game
                       </span>
@@ -284,7 +340,7 @@ export default function TeamComparison() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Matchup History</CardTitle>
-                    <CardDescription>All games between these teams</CardDescription>
+                    <CardDescription>All completed games between these owners</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -292,23 +348,37 @@ export default function TeamComparison() {
                         <TableRow>
                           <TableHead>Season</TableHead>
                           <TableHead>Week</TableHead>
-                          <TableHead className="text-right">{team1.name}</TableHead>
+                          <TableHead className="text-right">{person1.label}</TableHead>
                           <TableHead className="text-center">vs</TableHead>
-                          <TableHead>{team2.name}</TableHead>
+                          <TableHead>{person2.label}</TableHead>
                           <TableHead>Result</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {h2hMatchups.map((matchup) => {
-                          const team1Score = matchup.homeTeamId === team1EspnId ? matchup.homeScore : matchup.awayScore;
-                          const team2Score = matchup.homeTeamId === team2EspnId ? matchup.homeScore : matchup.awayScore;
+                          const team1Score = person1!.ids.has(matchup.homeTeamId) ? matchup.homeScore : matchup.awayScore;
+                          const team2Score = person2!.ids.has(matchup.homeTeamId) ? matchup.homeScore : matchup.awayScore;
                           const team1Won = (team1Score || 0) > (team2Score || 0);
                           const team2Won = (team2Score || 0) > (team1Score || 0);
                           
                           return (
                             <TableRow key={matchup.id}>
                               <TableCell>{matchup.seasonYear}</TableCell>
-                              <TableCell>Week {matchup.week}</TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {matchup.isPlayoffs ? (
+                                  <span className="text-primary font-medium">
+                                    Playoffs
+                                    {(matchup.scoringWeeks ?? 1) > 1 && (
+                                      <span className="text-muted-foreground font-normal">
+                                        {" "}
+                                        (2-week)
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  `Week ${matchup.week}`
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">
                                 <span className={team1Won ? "font-bold text-green-500" : ""}>
                                   {team1Score?.toFixed(1) || '0.0'}
@@ -324,13 +394,13 @@ export default function TeamComparison() {
                                 {team1Won && (
                                   <div className="flex items-center gap-1 text-green-500">
                                     <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm">{team1.name}</span>
+                                    <span className="text-sm">{person1.label}</span>
                                   </div>
                                 )}
                                 {team2Won && (
                                   <div className="flex items-center gap-1 text-green-500">
                                     <TrendingUp className="h-4 w-4" />
-                                    <span className="text-sm">{team2.name}</span>
+                                    <span className="text-sm">{person2.label}</span>
                                   </div>
                                 )}
                                 {!team1Won && !team2Won && (
@@ -358,12 +428,12 @@ export default function TeamComparison() {
             </>
           )}
 
-          {(!team1 || !team2) && (
+          {(!person1 || !person2) && (
             <Card>
               <CardContent className="py-12 text-center">
                 <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Select two teams above to view their head-to-head comparison
+                  Select two owners above to view their head-to-head comparison
                 </p>
               </CardContent>
             </Card>

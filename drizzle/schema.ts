@@ -1,4 +1,5 @@
 import {
+  double,
   int,
   mysqlEnum,
   mysqlTable,
@@ -106,8 +107,8 @@ export const teams = mysqlTable(
     wins: int("wins").default(0),
     losses: int("losses").default(0),
     ties: int("ties").default(0),
-    pointsFor: int("pointsFor").default(0),
-    pointsAgainst: int("pointsAgainst").default(0),
+    pointsFor: double("pointsFor").default(0),
+    pointsAgainst: double("pointsAgainst").default(0),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -208,12 +209,20 @@ export const matchups = mysqlTable(
     seasonYear: int("seasonYear").notNull(),
     homeTeamId: int("homeTeamId").notNull(),
     awayTeamId: int("awayTeamId").notNull(),
-    homeScore: int("homeScore").default(0),
-    awayScore: int("awayScore").default(0),
-    homeProjected: int("homeProjected").default(0),
-    awayProjected: int("awayProjected").default(0),
+    // Fantasy games are decided by fractions of a point; storing scores as
+    // whole numbers flips winners and fabricates ties.
+    homeScore: double("homeScore").default(0),
+    awayScore: double("awayScore").default(0),
+    homeProjected: double("homeProjected").default(0),
+    awayProjected: double("awayProjected").default(0),
     isComplete: int("isComplete").default(0), // 0 = false, 1 = true
     isPlayoffs: int("isPlayoffs").default(0),
+    /**
+     * How many NFL weeks this single matchup was scored over. Early seasons
+     * ran playoff rounds across two weeks and recorded one combined score, so
+     * scores are only comparable between matchups with the same span.
+     */
+    scoringWeeks: int("scoringWeeks").default(1).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -245,8 +254,8 @@ export const playerStats = mysqlTable(
     teamId: int("teamId"), // Team that owned the player this week
     week: int("week").notNull(),
     seasonYear: int("seasonYear").notNull(),
-    points: int("points").default(0),
-    projectedPoints: int("projectedPoints").default(0),
+    points: double("points").default(0),
+    projectedPoints: double("projectedPoints").default(0),
     wasStarted: int("wasStarted").default(0), // 0 = benched, 1 = started
     slotPosition: varchar("slotPosition", { length: 20 }), // QB, RB, WR, etc.
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -292,10 +301,10 @@ export const teamAllTimeStats = mysqlTable("teamAllTimeStats", {
   totalTies: int("totalTies").default(0),
   championships: int("championships").default(0),
   playoffAppearances: int("playoffAppearances").default(0),
-  totalPointsFor: int("totalPointsFor").default(0),
-  totalPointsAgainst: int("totalPointsAgainst").default(0),
-  highestWeeklyScore: int("highestWeeklyScore").default(0),
-  lowestWeeklyScore: int("lowestWeeklyScore").default(999999),
+  totalPointsFor: double("totalPointsFor").default(0),
+  totalPointsAgainst: double("totalPointsAgainst").default(0),
+  highestWeeklyScore: double("highestWeeklyScore").default(0),
+  lowestWeeklyScore: double("lowestWeeklyScore").default(999999),
   longestWinStreak: int("longestWinStreak").default(0),
   longestLoseStreak: int("longestLoseStreak").default(0),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

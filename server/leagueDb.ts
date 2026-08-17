@@ -2,7 +2,7 @@
  * Database operations for leagues, teams, players, and stats
  */
 
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import {
   leagues,
   League,
@@ -251,27 +251,32 @@ export async function upsertTeam(team: InsertTeam): Promise<Team | null> {
   if (!db) return null;
 
   try {
-    await db
-      .insert(teams)
-      .values(team)
-      .onDuplicateKeyUpdate({
-        set: {
-          name: team.name,
-          abbreviation: team.abbreviation,
-          logoUrl: team.logoUrl,
-          ownerName: team.ownerName,
-          franchiseKey: team.franchiseKey,
-          historySource: team.historySource,
-          userId: team.userId,
-          wins: team.wins,
-          losses: team.losses,
-          ties: team.ties,
-          pointsFor: team.pointsFor,
-          pointsAgainst: team.pointsAgainst,
-          seasonYear: team.seasonYear,
-          updatedAt: new Date(),
-        },
-      });
+    // A team's name changes freely — mid-season, after a draft — so it can
+    // never identify a franchise. franchiseKey (the person) is what career
+    // records group by, so a routine sync must never overwrite an established
+    // mapping with whatever ESPN currently reports.
+    const set: Record<string, unknown> = {
+      name: team.name,
+      abbreviation: team.abbreviation,
+      logoUrl: team.logoUrl,
+      historySource: team.historySource,
+      userId: team.userId,
+      wins: team.wins,
+      losses: team.losses,
+      ties: team.ties,
+      pointsFor: team.pointsFor,
+      pointsAgainst: team.pointsAgainst,
+      seasonYear: team.seasonYear,
+      updatedAt: new Date(),
+    };
+    if (team.franchiseKey != null) set.franchiseKey = team.franchiseKey;
+    // Only fill in an owner when one is not already recorded, so a curated
+    // league nickname survives the next refresh.
+    if (team.ownerName != null) {
+      set.ownerName = sql`COALESCE(${teams.ownerName}, ${team.ownerName})`;
+    }
+
+    await db.insert(teams).values(team).onDuplicateKeyUpdate({ set });
 
     const result = await db
       .select()
@@ -350,7 +355,7 @@ export async function getTeamsByLeagueAndSeason(
 
 export async function getTeamsByEspnLeagueAllTime(
   espnLeagueId: string
-): Promise<Team[]> {
+): Promise<Array<Team & { espnTeamIds: number[] }>> {
   const db = await getDb();
   if (!db) return [];
 
@@ -362,8 +367,10 @@ export async function getTeamsByEspnLeagueAllTime(
     .where(eq(leagues.espnLeagueId, espnLeagueId));
 
   // Group by a commissioner-cleaned franchise key when available. Public ESPN
-  // data falls back to the durable ESPN team ID.
-  const teamMap = new Map<string, Team>();
+  // data falls back to the durable ESPN team ID. Every team id the person has
+  // played under is kept, because matchups reference per-season ids and a
+  // career lookup must match all of them.
+  const teamMap = new Map<string, Team & { espnTeamIds: number[] }>();
 
   for (const row of allTeams) {
     const team = row.teams;
@@ -371,8 +378,11 @@ export async function getTeamsByEspnLeagueAllTime(
     const existing = teamMap.get(franchiseKey);
 
     if (!existing) {
-      teamMap.set(franchiseKey, { ...team });
+      teamMap.set(franchiseKey, { ...team, espnTeamIds: [team.espnTeamId] });
     } else {
+      if (!existing.espnTeamIds.includes(team.espnTeamId)) {
+        existing.espnTeamIds.push(team.espnTeamId);
+      }
       // Aggregate career stats for same espnTeamId
       existing.wins = (existing.wins || 0) + (team.wins || 0);
       existing.losses = (existing.losses || 0) + (team.losses || 0);
@@ -501,6 +511,68 @@ export async function replaceAvailablePlayers(
   }
 }
 
+/**
+ * The players on one fantasy team for a week, newest week that actually has
+ * roster data. Rosters arrive with boxscores, so the requested week can be
+ * empty before kickoff — falling back keeps the view useful in the preseason
+ * and on a Tuesday rather than showing nothing.
+ */
+export async function getRosterForTeamWeek(
+  leagueId: number,
+  seasonYear: number,
+  week: number,
+  espnTeamId: number
+): Promise<
+  Array<{
+    name: string;
+    position: string | null;
+    nflTeam: string | null;
+    status: string | null;
+    slotPosition: string | null;
+    wasStarted: boolean;
+    week: number;
+  }>
+> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({ stat: playerStats, player: players })
+    .from(playerStats)
+    .innerJoin(players, eq(playerStats.playerId, players.id))
+    .where(
+      and(
+        eq(playerStats.leagueId, leagueId),
+        eq(playerStats.seasonYear, seasonYear),
+        eq(playerStats.teamId, espnTeamId)
+      )
+    );
+
+  if (!rows.length) return [];
+
+  // Prefer the requested week; otherwise the latest week we have.
+  const weeksAvailable = rows.map(r => r.stat.week);
+  const targetWeek = weeksAvailable.includes(week)
+    ? week
+    : Math.max(...weeksAvailable);
+
+  return rows
+    .filter(r => r.stat.week === targetWeek)
+    .map(r => ({
+      name: r.player.name,
+      position: r.player.position,
+      nflTeam: r.player.nflTeam,
+      status: r.player.status,
+      slotPosition: r.stat.slotPosition,
+      wasStarted: r.stat.wasStarted === 1,
+      week: r.stat.week,
+    }))
+    .sort(
+      (a, b) => Number(b.wasStarted) - Number(a.wasStarted) ||
+        (a.slotPosition || "").localeCompare(b.slotPosition || "")
+    );
+}
+
 export async function getAvailablePlayers(
   leagueId: number,
   limit = 100,
@@ -564,6 +636,54 @@ export async function upsertMatchup(
     console.error("[LeagueDB] Error upserting matchup:", error);
     throw error;
   }
+}
+
+/**
+ * Remove matchups for a week that ESPN no longer reports.
+ *
+ * Commissioners re-generate schedules, and upserting alone leaves the old
+ * pairings behind forever — the same team then appears in several games in one
+ * week, alongside games that no longer exist. Only ever called for the
+ * league's current season: archived seasons come from reconciled records and
+ * must never be pruned by a routine sync.
+ */
+export async function pruneWeekMatchups(
+  leagueId: number,
+  seasonYear: number,
+  week: number,
+  keep: Array<{ homeTeamId: number; awayTeamId: number }>
+): Promise<number> {
+  const db = await getDb();
+  // An empty fetch means ESPN told us nothing, not that the week is empty.
+  if (!db || keep.length === 0) return 0;
+
+  const existing = await db
+    .select()
+    .from(matchups)
+    .where(
+      and(
+        eq(matchups.leagueId, leagueId),
+        eq(matchups.seasonYear, seasonYear),
+        eq(matchups.week, week)
+      )
+    );
+
+  const wanted = new Set(
+    keep.map(k => `${k.homeTeamId}:${k.awayTeamId}`)
+  );
+  const stale = existing.filter(
+    row => !wanted.has(`${row.homeTeamId}:${row.awayTeamId}`)
+  );
+
+  for (const row of stale) {
+    await db.delete(matchups).where(eq(matchups.id, row.id));
+  }
+  if (stale.length) {
+    console.log(
+      `[LeagueDB] Removed ${stale.length} stale matchup(s) from ${seasonYear} week ${week}`
+    );
+  }
+  return stale.length;
 }
 
 export async function getMatchupsByWeek(
@@ -904,6 +1024,7 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
       string,
       {
         ownerName: string;
+        latestSeason: number;
         totalWins: number;
         totalLosses: number;
         totalTies: number;
@@ -918,12 +1039,21 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     >();
 
     for (const { teams: team } of allTeams) {
-      if (!team.ownerName) continue;
+      // Group by the person, not by a display name. Owner labels and team
+      // names both change between seasons; franchiseKey is the stable
+      // identity, so a rename can never split one person into two rows.
+      const identity = team.franchiseKey || team.ownerName;
+      if (!identity) continue;
 
-      const existing = ownerStatsMap.get(team.ownerName);
       const wins = team.wins || 0;
       const losses = team.losses || 0;
       const ties = team.ties || 0;
+
+      // A season with no games yet (the upcoming year before kickoff) counts
+      // toward nothing — no seasons played, no zeros dragging down averages.
+      if (wins + losses + ties === 0 && !(team.pointsFor || 0)) continue;
+
+      const existing = ownerStatsMap.get(identity);
       const pf = team.pointsFor || 0;
       const pa = team.pointsAgainst || 0;
 
@@ -946,9 +1076,16 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
           existing.worstSeasonWins = wins;
           existing.worstSeasonYear = team.seasonYear;
         }
+
+        // Prefer the label from the most recent season this person played.
+        if (team.seasonYear > existing.latestSeason && team.ownerName) {
+          existing.ownerName = team.ownerName;
+          existing.latestSeason = team.seasonYear;
+        }
       } else {
-        ownerStatsMap.set(team.ownerName, {
-          ownerName: team.ownerName,
+        ownerStatsMap.set(identity, {
+          ownerName: team.ownerName || identity,
+          latestSeason: team.seasonYear,
           totalWins: wins,
           totalLosses: losses,
           totalTies: ties,

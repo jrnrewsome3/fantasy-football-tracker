@@ -19,59 +19,69 @@ export default function HeadToHeadMatrix({ leagueId }: HeadToHeadMatrixProps) {
 
   const isLoading = teamsLoading || matchupsLoading;
 
-  // Build head-to-head records matrix
+  // Head-to-head follows the person, not the team. Team names change between
+  // (and during) seasons, and historical seasons use different team ids than
+  // the current one, so both sides are resolved to a franchise key first.
   const h2hMatrix = new Map<string, H2HRecord>();
 
-  if (teams && allMatchups) {
-    // Initialize matrix
-    teams.forEach(team1 => {
-      teams.forEach(team2 => {
-        if (team1.espnTeamId !== team2.espnTeamId) {
-          const key = `${team1.espnTeamId}-${team2.espnTeamId}`;
-          h2hMatrix.set(key, { wins: 0, losses: 0, ties: 0 });
-        }
+  const personOf = (seasonYear: number, espnTeamId: number) => {
+    const team = teams?.find(
+      t => t.seasonYear === seasonYear && t.espnTeamId === espnTeamId
+    );
+    return team?.franchiseKey || team?.ownerName || null;
+  };
+
+  /** One row per person, labelled by their most recent name. */
+  const people = new Map<string, { key: string; label: string; season: number }>();
+  for (const team of teams || []) {
+    const key = team.franchiseKey || team.ownerName;
+    if (!key) continue;
+    const existing = people.get(key);
+    if (!existing || team.seasonYear > existing.season) {
+      people.set(key, {
+        key,
+        label: team.ownerName || team.name,
+        season: team.seasonYear,
       });
-    });
+    }
+  }
+  const roster = Array.from(people.values()).sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
 
-    // Calculate records from matchups
-    allMatchups.forEach(matchup => {
-      if (!matchup.isComplete) return;
+  if (teams && allMatchups) {
+    for (const a of roster)
+      for (const b of roster)
+        if (a.key !== b.key)
+          h2hMatrix.set(`${a.key}-${b.key}`, { wins: 0, losses: 0, ties: 0 });
 
+    for (const matchup of allMatchups) {
+      if (!matchup.isComplete) continue;
+
+      const home = personOf(matchup.seasonYear, matchup.homeTeamId);
+      const away = personOf(matchup.seasonYear, matchup.awayTeamId);
+      if (!home || !away || home === away) continue;
+
+      const homeRecord = h2hMatrix.get(`${home}-${away}`);
+      const awayRecord = h2hMatrix.get(`${away}-${home}`);
       const homeScore = matchup.homeScore || 0;
       const awayScore = matchup.awayScore || 0;
 
       if (homeScore > awayScore) {
-        // Home team won
-        const homeKey = `${matchup.homeTeamId}-${matchup.awayTeamId}`;
-        const awayKey = `${matchup.awayTeamId}-${matchup.homeTeamId}`;
-        const homeRecord = h2hMatrix.get(homeKey);
-        const awayRecord = h2hMatrix.get(awayKey);
         if (homeRecord) homeRecord.wins++;
         if (awayRecord) awayRecord.losses++;
       } else if (awayScore > homeScore) {
-        // Away team won
-        const homeKey = `${matchup.homeTeamId}-${matchup.awayTeamId}`;
-        const awayKey = `${matchup.awayTeamId}-${matchup.homeTeamId}`;
-        const homeRecord = h2hMatrix.get(homeKey);
-        const awayRecord = h2hMatrix.get(awayKey);
         if (homeRecord) homeRecord.losses++;
         if (awayRecord) awayRecord.wins++;
       } else {
-        // Tie
-        const homeKey = `${matchup.homeTeamId}-${matchup.awayTeamId}`;
-        const awayKey = `${matchup.awayTeamId}-${matchup.homeTeamId}`;
-        const homeRecord = h2hMatrix.get(homeKey);
-        const awayRecord = h2hMatrix.get(awayKey);
         if (homeRecord) homeRecord.ties++;
         if (awayRecord) awayRecord.ties++;
       }
-    });
+    }
   }
 
-  const getH2HRecord = (team1Id: number, team2Id: number): H2HRecord => {
-    const key = `${team1Id}-${team2Id}`;
-    return h2hMatrix.get(key) || { wins: 0, losses: 0, ties: 0 };
-  };
+  const getH2HRecord = (key1: string, key2: string): H2HRecord =>
+    h2hMatrix.get(`${key1}-${key2}`) || { wins: 0, losses: 0, ties: 0 };
 
   const formatRecord = (record: H2HRecord): string => {
     if (record.ties > 0) {
@@ -91,7 +101,8 @@ export default function HeadToHeadMatrix({ leagueId }: HeadToHeadMatrixProps) {
       <CardHeader>
         <CardTitle>Head-to-Head Records</CardTitle>
         <CardDescription>
-          All-time matchup records between teams. Row team vs Column team.
+          All-time records between owners, across every season they have played.
+          Row owner vs column owner.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -101,52 +112,45 @@ export default function HeadToHeadMatrix({ leagueId }: HeadToHeadMatrixProps) {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : teams && teams.length > 0 ? (
+        ) : roster.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-card z-10 min-w-[150px]">Team</TableHead>
-                  {teams.map(team => (
-                    <TableHead key={team.id} className="text-center min-w-[80px]">
-                      <div className="text-xs font-medium">{team.abbreviation || team.name.substring(0, 3).toUpperCase()}</div>
+                  <TableHead className="sticky left-0 bg-card z-10 min-w-[130px]">Owner</TableHead>
+                  {roster.map(person => (
+                    <TableHead key={person.key} className="text-center min-w-[74px]">
+                      <div className="text-xs font-medium">{person.label}</div>
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teams.map(rowTeam => (
-                  <TableRow key={rowTeam.id}>
+                {roster.map(rowPerson => (
+                  <TableRow key={rowPerson.key}>
                     <TableCell className="sticky left-0 bg-card z-10 font-medium">
-                      <div className="flex flex-col">
-                        <span className="text-sm">{rowTeam.name}</span>
-                        {rowTeam.ownerName && (
-                          <span className="text-xs text-muted-foreground">{rowTeam.ownerName}</span>
-                        )}
-                      </div>
+                      <span className="text-sm">{rowPerson.label}</span>
                     </TableCell>
-                    {teams.map(colTeam => {
-                      if (rowTeam.espnTeamId === colTeam.espnTeamId) {
+                    {roster.map(colPerson => {
+                      if (rowPerson.key === colPerson.key) {
                         return (
-                          <TableCell key={colTeam.id} className="text-center bg-accent/20">
+                          <TableCell key={colPerson.key} className="text-center bg-accent/20">
                             <span className="text-muted-foreground">—</span>
                           </TableCell>
                         );
                       }
 
-                      const record = getH2HRecord(rowTeam.espnTeamId, colTeam.espnTeamId);
+                      const record = getH2HRecord(rowPerson.key, colPerson.key);
                       const totalGames = record.wins + record.losses + record.ties;
 
                       return (
-                        <TableCell key={colTeam.id} className="text-center">
+                        <TableCell key={colPerson.key} className="text-center">
                           {totalGames > 0 ? (
-                            <div className="flex flex-col items-center">
-                              <span className={`text-sm font-semibold ${getRecordColor(record)}`}>
-                                {formatRecord(record)}
-                              </span>
-                            </div>
+                            <span className={`text-sm font-semibold ${getRecordColor(record)}`}>
+                              {formatRecord(record)}
+                            </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">0-0</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       );

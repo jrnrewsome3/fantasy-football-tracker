@@ -67,10 +67,22 @@ export default function HistoricalHighlights() {
     );
   }
 
+  // Records only consider games that were actually played — an unplayed
+  // 0-0 fixture from the upcoming season would otherwise be the "closest
+  // game" and "lowest score" in league history.
+  const playedMatchups = (allMatchups || []).filter(m => m.isComplete);
+
   // Filter matchups by season
-  const filteredMatchups = selectedSeason === "all" 
-    ? allMatchups || []
-    : (allMatchups || []).filter(m => m.seasonYear.toString() === selectedSeason);
+  const seasonMatchups = selectedSeason === "all"
+    ? playedMatchups
+    : playedMatchups.filter(m => m.seasonYear.toString() === selectedSeason);
+
+  // Single-game records must only compare like with like. Early seasons scored
+  // a playoff round over two weeks and recorded one combined total, so those
+  // matchups would win every "highest score" list by default without having
+  // been a bigger week. They get their own section below.
+  const filteredMatchups = seasonMatchups.filter(m => (m.scoringWeeks ?? 1) === 1);
+  const multiWeekMatchups = seasonMatchups.filter(m => (m.scoringWeeks ?? 1) > 1);
 
   // Get unique seasons
   const seasons = Array.from(new Set((allMatchups || []).map(m => m.seasonYear))).sort((a, b) => b - a);

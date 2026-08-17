@@ -47,9 +47,12 @@ import {
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import { getLoginUrl } from "@/const";
-import { HISTORY_ENABLED } from "@shared/const";
+import { HISTORY_ENABLED, LEGACY_HISTORY_TOOLS } from "@shared/const";
 import WeeklyMatchups from "./WeeklyMatchups";
 import AllTimeStats from "./AllTimeStats";
+import AllPlayStandings from "./AllPlayStandings";
+import MyWeek from "./MyWeek";
+import NewsletterPage from "./NewsletterPage";
 import AIQueryBox from "@/components/AIQueryBox";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -64,6 +67,7 @@ export default function LeagueDetail() {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"single" | "alltime">("single");
   const [showHistoryHelp, setShowHistoryHelp] = useState(false);
+  const [weatherMineOnly, setWeatherMineOnly] = useState(true);
   const requestedSeason =
     typeof window !== "undefined"
       ? Number(new URLSearchParams(window.location.search).get("season"))
@@ -330,15 +334,26 @@ export default function LeagueDetail() {
     );
   }
 
+  // Career standings need a qualification floor, like a batting title: a
+  // 10-3 single season should not outrank seven-year veterans on win
+  // percentage alone. Owners under the minimum still appear, grouped below
+  // the qualified field.
+  const MIN_CAREER_GAMES = 30; // roughly two full seasons
+  const gamesPlayedOf = (t: { wins: number | null; losses: number | null; ties: number | null }) =>
+    (t.wins || 0) + (t.losses || 0) + (t.ties || 0);
+  const winPctOf = (t: { wins: number | null; losses: number | null; ties: number | null }) => {
+    const games = gamesPlayedOf(t);
+    return games ? (t.wins || 0) / games : 0;
+  };
+  const isQualified = (t: { wins: number | null; losses: number | null; ties: number | null }) =>
+    viewMode !== "alltime" || gamesPlayedOf(t) >= MIN_CAREER_GAMES;
+
   const sortedTeams = teams
     ? [...teams].sort((a, b) => {
-        const aWinPct =
-          (a.wins || 0) / ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)) ||
-          0;
-        const bWinPct =
-          (b.wins || 0) / ((b.wins || 0) + (b.losses || 0) + (b.ties || 0)) ||
-          0;
-        if (aWinPct !== bWinPct) return bWinPct - aWinPct;
+        const qualDiff = Number(isQualified(b)) - Number(isQualified(a));
+        if (qualDiff !== 0) return qualDiff;
+        const pctDiff = winPctOf(b) - winPctOf(a);
+        if (pctDiff !== 0) return pctDiff;
         return (b.pointsFor || 0) - (a.pointsFor || 0);
       })
     : [];
@@ -419,12 +434,12 @@ export default function LeagueDetail() {
                   <Copy className="h-4 w-4" /> Invite Members
                 </Button>
               )}
-              {HISTORY_ENABLED && league.userRole === "commissioner" && (
+              {LEGACY_HISTORY_TOOLS && league.userRole === "commissioner" && (
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    historyMutation.mutate({
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                historyMutation.mutate({
                       espnLeagueId: league.espnLeagueId,
                     })
                   }
@@ -436,7 +451,7 @@ export default function LeagueDetail() {
                   {historyMutation.isPending ? "Importing…" : "Import History"}
                 </Button>
               )}
-              {HISTORY_ENABLED && league.userRole === "commissioner" && (
+              {LEGACY_HISTORY_TOOLS && league.userRole === "commissioner" && (
                 <label>
                   <Button
                     variant="outline"
@@ -460,7 +475,7 @@ export default function LeagueDetail() {
                   />
                 </label>
               )}
-              {HISTORY_ENABLED &&
+              {LEGACY_HISTORY_TOOLS &&
                 league.userRole === "commissioner" &&
                 availableSeasons.length > 1 && (
                   <Button
@@ -488,7 +503,7 @@ export default function LeagueDetail() {
               )}
             </div>
 
-            {showHistoryHelp && league.userRole === "commissioner" && (
+            {LEGACY_HISTORY_TOOLS && showHistoryHelp && league.userRole === "commissioner" && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                 <p className="font-semibold text-card-foreground">
                   ESPN has the archive locked
@@ -573,7 +588,7 @@ export default function LeagueDetail() {
       </div>
 
       <div className="container py-6 sm:py-8">
-        {HISTORY_ENABLED && historyNeedsCleanup && (
+        {LEGACY_HISTORY_TOOLS && historyNeedsCleanup && (
           <Card className="mb-6 border-amber-500/40 bg-amber-500/10">
             <CardHeader>
               <CardTitle className="text-base">
@@ -665,6 +680,12 @@ export default function LeagueDetail() {
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <TabsList className="w-full sm:w-auto inline-flex min-w-max">
               <TabsTrigger
+                value="myweek"
+                className="text-xs sm:text-sm px-3 sm:px-4"
+              >
+                My Week
+              </TabsTrigger>
+              <TabsTrigger
                 value="standings"
                 className="text-xs sm:text-sm px-3 sm:px-4"
               >
@@ -697,6 +718,13 @@ export default function LeagueDetail() {
                 Game Weather
               </TabsTrigger>
               <TabsTrigger
+                value="newsletter"
+                className="text-xs sm:text-sm px-3 sm:px-4"
+              >
+                Newsletter
+              </TabsTrigger>
+
+              <TabsTrigger
                 value="ai"
                 className="text-xs sm:text-sm px-3 sm:px-4"
               >
@@ -710,6 +738,10 @@ export default function LeagueDetail() {
               </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="myweek">
+            <MyWeek leagueId={leagueId} />
+          </TabsContent>
 
           <TabsContent value="available">
             <Card>
@@ -784,9 +816,20 @@ export default function LeagueDetail() {
                 {weatherLoading ? (
                   <Skeleton className="h-64 w-full" />
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {weekOutlook?.map(game => (
-                      <div key={game.id} className="rounded-lg border p-4">
+                  (() => {
+                    const games = weekOutlook?.games || [];
+                    const mine = games.filter(g => g.myPlayers.length > 0);
+                    const rest = games.filter(g => g.myPlayers.length === 0);
+                    const showMineOnly = weatherMineOnly && mine.length > 0;
+
+                    const card = (
+                      game: (typeof games)[number],
+                      highlight: boolean
+                    ) => (
+                      <div
+                        key={game.id}
+                        className={`rounded-lg border p-4 ${highlight ? "border-primary/50 bg-primary/5" : ""}`}
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <strong>{game.matchup}</strong>
                           <span className="text-xs text-muted-foreground">
@@ -810,9 +853,88 @@ export default function LeagueDetail() {
                             ? ` • ${game.precipitationChance}% precipitation`
                             : ""}
                         </p>
+                        {game.myPlayers.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-3">
+                            {game.myPlayers.map(p => (
+                              <span
+                                key={p.name}
+                                className={`rounded px-2 py-0.5 text-xs ${
+                                  p.wasStarted
+                                    ? "bg-primary/15 font-medium text-primary"
+                                    : "bg-muted text-muted-foreground"
+                                }`}
+                                title={
+                                  p.wasStarted
+                                    ? `Starting at ${p.slotPosition}`
+                                    : "On your bench"
+                                }
+                              >
+                                {p.name}
+                                {p.position ? ` · ${p.position}` : ""}
+                                {p.status && p.status !== "ACTIVE"
+                                  ? ` · ${p.status}`
+                                  : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+
+                    return (
+                      <div className="space-y-5">
+                        {weekOutlook?.hasRoster ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+                              <Button
+                                variant={showMineOnly ? "default" : "ghost"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => setWeatherMineOnly(true)}
+                              >
+                                My players ({mine.length})
+                              </Button>
+                              <Button
+                                variant={!showMineOnly ? "default" : "ghost"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => setWeatherMineOnly(false)}
+                              >
+                                All games ({games.length})
+                              </Button>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              Highlighted games have your players in them
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Once rosters sync you can filter this to only the
+                            games your own players are in.
+                          </p>
+                        )}
+
+                        {showMineOnly ? (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {mine.map(game => card(game, true))}
+                          </div>
+                        ) : (
+                          <>
+                            {mine.length > 0 && (
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {mine.map(game => card(game, true))}
+                              </div>
+                            )}
+                            {rest.length > 0 && (
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {rest.map(game => card(game, false))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
               </CardContent>
             </Card>
@@ -852,14 +974,14 @@ export default function LeagueDetail() {
                             size="sm"
                             onClick={() => setViewMode("alltime")}
                             className="text-xs"
-                            disabled={historyNeedsCleanup}
+                            disabled={LEGACY_HISTORY_TOOLS && historyNeedsCleanup}
                             title={
-                              historyNeedsCleanup
+                              LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                                 ? "Review historical team identities before calculating career totals"
                                 : undefined
                             }
                           >
-                            {historyNeedsCleanup
+                            {LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                               ? "All-Time (review first)"
                               : "All-Time"}
                           </Button>
@@ -913,9 +1035,6 @@ export default function LeagueDetail() {
                           <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">
                             Team
                           </TableHead>
-                          <TableHead className="text-xs sm:text-sm hidden lg:table-cell">
-                            ESPN ID
-                          </TableHead>
                           <TableHead className="text-center text-xs sm:text-sm">
                             W
                           </TableHead>
@@ -941,40 +1060,46 @@ export default function LeagueDetail() {
                           <TableRow
                             key={team.id}
                             className={
-                              !HISTORY_ENABLED || historyNeedsCleanup
+                              !HISTORY_ENABLED || (LEGACY_HISTORY_TOOLS && historyNeedsCleanup)
                                 ? ""
                                 : "cursor-pointer hover:bg-accent/50"
                             }
                             onClick={() => {
-                              if (HISTORY_ENABLED && !historyNeedsCleanup) {
+                              if (HISTORY_ENABLED && !(LEGACY_HISTORY_TOOLS && historyNeedsCleanup)) {
                                 setLocation(
                                   `/team/${team.espnTeamId}/${league.espnLeagueId}/history`
                                 );
                               }
                             }}
                             title={
-                              HISTORY_ENABLED && historyNeedsCleanup
+                              LEGACY_HISTORY_TOOLS && historyNeedsCleanup
                                 ? "Team career history will unlock after historical cleanup"
                                 : undefined
                             }
                           >
                             <TableCell className="font-medium text-xs sm:text-sm">
-                              {index + 1}
+                              {isQualified(team) ? index + 1 : "—"}
                             </TableCell>
                             <TableCell className="min-w-[140px] sm:min-w-0">
                               <div>
                                 <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">
                                   {team.name}
                                 </div>
-                                {team.ownerName && (
-                                  <div className="text-xs text-muted-foreground line-clamp-1">
-                                    {team.ownerName}
+                                {/* Historical seasons store the person as the
+                                    team name, so showing both repeats it. */}
+                                {team.ownerName &&
+                                  team.ownerName !== team.name && (
+                                    <div className="text-xs text-muted-foreground line-clamp-1">
+                                      {team.ownerName}
+                                    </div>
+                                  )}
+                                {!isQualified(team) && (
+                                  <div className="text-[11px] text-muted-foreground italic">
+                                    under {MIN_CAREER_GAMES}-game minimum (
+                                    {gamesPlayedOf(team)} played)
                                   </div>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">
-                              {team.espnTeamId}
                             </TableCell>
                             <TableCell className="text-center text-xs sm:text-sm font-semibold">
                               {team.wins || 0}
@@ -1032,7 +1157,7 @@ export default function LeagueDetail() {
 
           {HISTORY_ENABLED && (
           <TabsContent value="alltime" className="space-y-4">
-            {historyNeedsCleanup ? (
+            {LEGACY_HISTORY_TOOLS && historyNeedsCleanup ? (
               <Card className="border-amber-500/40 bg-amber-500/10">
                 <CardHeader>
                   <CardTitle>Career totals are waiting for cleanup</CardTitle>
@@ -1059,13 +1184,28 @@ export default function LeagueDetail() {
                 </CardContent>
               </Card>
             ) : (
-              <AllTimeStats
-                leagueId={leagueId}
-                espnLeagueId={league.espnLeagueId}
-              />
+              <div className="space-y-4">
+                <AllTimeStats
+                  leagueId={leagueId}
+                  espnLeagueId={league.espnLeagueId}
+                />
+                <AllPlayStandings
+                  espnLeagueId={league.espnLeagueId}
+                  seasons={availableSeasons}
+                />
+              </div>
             )}
           </TabsContent>
           )}
+
+          <TabsContent value="newsletter">
+            <NewsletterPage
+              leagueId={leagueId}
+              currentWeek={Math.max(1, league.currentWeek || 1)}
+              seasons={availableSeasons}
+              currentSeason={league.seasonYear}
+            />
+          </TabsContent>
 
           <TabsContent value="ai" className="space-y-4">
             <AIQueryBox leagueId={leagueId} />

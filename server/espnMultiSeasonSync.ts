@@ -1,5 +1,8 @@
 /** Import archived ESPN seasons into one connected league record. */
 
+import { and, eq } from "drizzle-orm";
+import { leagueSeasons } from "../drizzle/schema";
+import { getDb } from "./db";
 import { getLeagueByEspnId, upsertLeagueSeason } from "./leagueDb";
 import { syncHistoricalSeasonData, syncWeekMatchups } from "./espnSync";
 
@@ -10,7 +13,38 @@ export interface MultiSeasonSyncResult {
   seasons: { year: number; success: boolean; message: string }[];
 }
 
+/**
+ * A season reconciled from league records and published after validation must
+ * never be silently replaced by an ESPN re-pull, which carries none of that
+ * verification. Guarded here rather than only in the UI so the protection
+ * holds however the import is triggered.
+ */
+async function isVerifiedFromRecords(leagueId: number, year: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ source: leagueSeasons.source })
+    .from(leagueSeasons)
+    .where(
+      and(
+        eq(leagueSeasons.leagueId, leagueId),
+        eq(leagueSeasons.seasonYear, year)
+      )
+    )
+    .limit(1);
+  return rows[0]?.source === "league-records-doc";
+}
+
 async function importSeason(espnLeagueId: string, year: number) {
+  const existing = await getLeagueByEspnId(espnLeagueId);
+  if (existing && (await isVerifiedFromRecords(existing.id, year))) {
+    return {
+      year,
+      success: false,
+      message: `${year} is already reconciled from league records and was left untouched.`,
+    };
+  }
+
   const season = await syncHistoricalSeasonData(espnLeagueId, year);
   if (!season.success) return { year, success: false, message: season.message };
 
