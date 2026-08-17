@@ -1035,9 +1035,6 @@ export default function LeagueDetail() {
                           <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">
                             Team
                           </TableHead>
-                          <TableHead className="text-xs sm:text-sm hidden lg:table-cell">
-                            ESPN ID
-                          </TableHead>
                           <TableHead className="text-center text-xs sm:text-sm">
                             W
                           </TableHead>
@@ -1088,11 +1085,14 @@ export default function LeagueDetail() {
                                 <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">
                                   {team.name}
                                 </div>
-                                {team.ownerName && (
-                                  <div className="text-xs text-muted-foreground line-clamp-1">
-                                    {team.ownerName}
-                                  </div>
-                                )}
+                                {/* Historical seasons store the person as the
+                                    team name, so showing both repeats it. */}
+                                {team.ownerName &&
+                                  team.ownerName !== team.name && (
+                                    <div className="text-xs text-muted-foreground line-clamp-1">
+                                      {team.ownerName}
+                                    </div>
+                                  )}
                                 {!isQualified(team) && (
                                   <div className="text-[11px] text-muted-foreground italic">
                                     under {MIN_CAREER_GAMES}-game minimum (
@@ -1100,9 +1100,6 @@ export default function LeagueDetail() {
                                   </div>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">
-                              {team.espnTeamId}
                             </TableCell>
                             <TableCell className="text-center text-xs sm:text-sm font-semibold">
                               {team.wins || 0}
