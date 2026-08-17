@@ -9,14 +9,14 @@
  */
 
 import { and, eq, lt } from "drizzle-orm";
-import { matchups, teams } from "../drizzle/schema";
+import { leagueSeasons, matchups, teams } from "../drizzle/schema";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getLeagueById } from "./leagueDb";
 import { getMatchupSeries } from "./rivalry";
 
 export interface Newsletter {
-  kind: "preview" | "recap";
+  kind: "preview" | "recap" | "season";
   week: number;
   seasonYear: number;
   leagueName: string;
@@ -371,6 +371,144 @@ async function buildRecapBrief(
   ].join("\n");
 }
 
+/**
+ * The whole season in one brief: final standings, the podium, the playoff
+ * run, and the season's records. Written after the last game rather than
+ * per week.
+ */
+async function buildSeasonBrief(leagueId: number, seasonYear: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const teamRows = await db
+    .select()
+    .from(teams)
+    .where(and(eq(teams.leagueId, leagueId), eq(teams.seasonYear, seasonYear)));
+  if (!teamRows.length)
+    throw new Error(`No data stored for the ${seasonYear} season`);
+
+  const label = new Map(
+    teamRows.map(t => [t.espnTeamId, t.ownerName || t.name])
+  );
+
+  const games = await db
+    .select()
+    .from(matchups)
+    .where(
+      and(
+        eq(matchups.leagueId, leagueId),
+        eq(matchups.seasonYear, seasonYear),
+        eq(matchups.isComplete, 1)
+      )
+    );
+  if (!games.length)
+    throw new Error(`The ${seasonYear} season has no completed games yet`);
+
+  const regular = games.filter(g => !g.isPlayoffs);
+  const playoffs = games.filter(g => g.isPlayoffs);
+
+  const table = new Map<
+    number,
+    { wins: number; losses: number; pf: number; pa: number }
+  >();
+  const add = (id: number, mine: number, theirs: number) => {
+    const row = table.get(id) || { wins: 0, losses: 0, pf: 0, pa: 0 };
+    row.pf += mine;
+    row.pa += theirs;
+    mine > theirs ? row.wins++ : row.losses++;
+    table.set(id, row);
+  };
+  for (const g of regular) {
+    add(g.homeTeamId, g.homeScore ?? 0, g.awayScore ?? 0);
+    add(g.awayTeamId, g.awayScore ?? 0, g.homeScore ?? 0);
+  }
+
+  const standings = Array.from(table.entries())
+    .map(([id, row]) => ({ label: label.get(id) ?? "?", ...row }))
+    .sort((a, b) => b.wins - a.wins || b.pf - a.pf);
+
+  // Single-week records only, so two-week playoff rounds cannot win a "best
+  // week" that was never a week.
+  const weekly = games
+    .filter(g => (g.scoringWeeks ?? 1) === 1)
+    .flatMap(g => [
+      { who: label.get(g.homeTeamId), pts: g.homeScore ?? 0, week: g.week },
+      { who: label.get(g.awayTeamId), pts: g.awayScore ?? 0, week: g.week },
+    ])
+    .filter(x => x.who);
+  const bestWeek = weekly.slice().sort((a, b) => b.pts - a.pts)[0];
+  const worstWeek = weekly
+    .slice()
+    .filter(x => x.pts > 20)
+    .sort((a, b) => a.pts - b.pts)[0];
+
+  const margins = games.map(g => ({
+    home: label.get(g.homeTeamId),
+    away: label.get(g.awayTeamId),
+    hs: g.homeScore ?? 0,
+    as: g.awayScore ?? 0,
+    margin: Math.abs((g.homeScore ?? 0) - (g.awayScore ?? 0)),
+    week: g.week,
+    playoff: g.isPlayoffs === 1,
+  }));
+  const closest = margins
+    .filter(m => m.margin > 0)
+    .sort((a, b) => a.margin - b.margin)[0];
+  const biggest = margins.sort((a, b) => b.margin - a.margin)[0];
+
+  const [season] = await db
+    .select()
+    .from(leagueSeasons)
+    .where(
+      and(
+        eq(leagueSeasons.leagueId, leagueId),
+        eq(leagueSeasons.seasonYear, seasonYear)
+      )
+    )
+    .limit(1);
+
+  const championRow = standings.find(s => s.label === season?.championName);
+
+  return [
+    `${seasonYear} SEASON REVIEW`,
+    season?.championName
+      ? `- Champion: ${season.championName}${championRow ? ` (regular season ${championRow.wins}-${championRow.losses}, ${championRow.pf.toFixed(1)} points, ${standings.findIndex(s => s.label === season.championName) + 1}th in points scored of ${standings.length})` : ""}`
+      : "- Champion: not recorded",
+    season?.runnerUpName ? `- Runner-up: ${season.runnerUpName}` : "",
+    season?.thirdPlaceName ? `- Third place: ${season.thirdPlaceName}` : "",
+    `\nFINAL REGULAR-SEASON STANDINGS`,
+    ...standings.map(
+      (s, i) =>
+        `- ${i + 1}. ${s.label} ${s.wins}-${s.losses} (${s.wins > s.losses ? "winning record" : s.wins < s.losses ? "losing record" : "even record"}), ${s.pf.toFixed(1)} points for, ${s.pa.toFixed(1)} against`
+    ),
+    playoffs.length ? `\nPLAYOFF RESULTS` : "",
+    ...playoffs
+      .sort((a, b) => a.week - b.week)
+      .map(g => {
+        const hs = g.homeScore ?? 0;
+        const as = g.awayScore ?? 0;
+        const w = hs > as ? label.get(g.homeTeamId) : label.get(g.awayTeamId);
+        const l = hs > as ? label.get(g.awayTeamId) : label.get(g.homeTeamId);
+        return `- ${w} def. ${l} ${Math.max(hs, as).toFixed(1)}-${Math.min(hs, as).toFixed(1)}`;
+      }),
+    `\nSEASON RECORDS`,
+    bestWeek
+      ? `- Highest single week: ${bestWeek.who} ${bestWeek.pts.toFixed(1)} in week ${bestWeek.week}`
+      : "",
+    worstWeek
+      ? `- Lowest single week: ${worstWeek.who} ${worstWeek.pts.toFixed(1)} in week ${worstWeek.week}`
+      : "",
+    closest
+      ? `- Closest game: ${closest.hs > closest.as ? closest.home : closest.away} def. ${closest.hs > closest.as ? closest.away : closest.home} by ${closest.margin.toFixed(2)} in week ${closest.week}`
+      : "",
+    biggest
+      ? `- Biggest blowout: ${biggest.hs > biggest.as ? biggest.home : biggest.away} def. ${biggest.hs > biggest.as ? biggest.away : biggest.home} by ${biggest.margin.toFixed(2)} in week ${biggest.week}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 const VOICE = `You write the weekly newsletter for a long-running fantasy football league of friends.
 
 Voice: a sportswriter who has covered this league for years and is not impressed by any of them. Dry, confident, funny. You roast — but you roast performance, never the person. Nothing about anyone's appearance, family, job, or character. A manager's bad lineup is fair game; a manager is not.
@@ -385,9 +523,11 @@ Hard rules:
 - The specific detail is always better than the adjective. "Marshall has beaten him seven straight times" beats "a heated rivalry".
 - Write in markdown, ready to paste into a group chat. Short paragraphs. No preamble, no sign-off, no emoji.`;
 
-async function write(kind: "preview" | "recap", brief: string, week: number) {
+async function write(kind: "preview" | "recap" | "season", brief: string, week: number) {
   const instruction =
-    kind === "preview"
+    kind === "season"
+      ? `Write the season review. Open with the champion and what makes their title interesting — a losing regular-season record, finishing low in points scored, whatever the brief actually shows. Then cover the season: who was good, who collapsed, the playoff run, and the records. End with one line about what carries into next year.`
+      : kind === "preview"
       ? `Write the Week ${week} preview. Open with one short paragraph on the state of the league. Then give each matchup its own short section with a bold headline of a few words and two or three sentences that use the actual history. End with one line worth arguing about.`
       : `Write the Week ${week} recap. Open with the single most interesting thing that happened. Then cover the results, leading with whatever mattered most rather than going in order. Call out the blowout, the close one, and any upset. End with what it means for the standings.`;
 
@@ -407,7 +547,7 @@ async function write(kind: "preview" | "recap", brief: string, week: number) {
 
 export async function generateNewsletter(
   leagueId: number,
-  kind: "preview" | "recap",
+  kind: "preview" | "recap" | "season",
   week: number,
   seasonYear?: number
 ): Promise<Newsletter> {
@@ -416,9 +556,11 @@ export async function generateNewsletter(
   const year = seasonYear ?? league.seasonYear;
 
   const brief =
-    kind === "preview"
-      ? await buildPreviewBrief(leagueId, year, week)
-      : await buildRecapBrief(leagueId, year, week);
+    kind === "season"
+      ? await buildSeasonBrief(leagueId, year)
+      : kind === "preview"
+        ? await buildPreviewBrief(leagueId, year, week)
+        : await buildRecapBrief(leagueId, year, week);
 
   const markdown = await write(kind, brief, week);
 

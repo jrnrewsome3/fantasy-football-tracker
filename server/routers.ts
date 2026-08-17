@@ -470,7 +470,7 @@ export const appRouter = router({
       .input(
         z.object({
           leagueId: z.number(),
-          kind: z.enum(["preview", "recap"]),
+          kind: z.enum(["preview", "recap", "season"]),
           week: z.number().int().min(1).max(20),
           seasonYear: z.number().int().optional(),
         })

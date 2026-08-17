@@ -9,7 +9,7 @@ import {
   getRecentTransactions 
 } from "./leagueDb";
 import { getDb } from "./db";
-import { leagues, teams, matchups, playerStats } from "../drizzle/schema";
+import { leagues, teams, matchups, playerStats, leagueSeasons } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export interface AIQueryResult {
@@ -113,8 +113,62 @@ export async function answerLeagueQuestion(
       .sort((a, b) => b.totalPoints - a.totalPoints)
       .slice(0, 10);
 
+    // Championships are the single most asked-about fact in a league and were
+    // absent from this context entirely: season leaders are ranked by
+    // regular-season wins, so a champion who had a losing record never
+    // appeared. Read the verified podium for every season instead.
+    const seasonRows = await db
+      .select()
+      .from(leagueSeasons)
+      .where(eq(leagueSeasons.leagueId, leagueId));
+    const podium = seasonRows
+      .slice()
+      .sort((a, b) => a.seasonYear - b.seasonYear)
+      .filter(s => s.championName);
+
+    // Career totals per person, so "who has the most wins/titles" is answerable.
+    const titlesByOwner = new Map<string, number[]>();
+    for (const s of podium) {
+      if (!s.championName) continue;
+      const list = titlesByOwner.get(s.championName) || [];
+      list.push(s.seasonYear);
+      titlesByOwner.set(s.championName, list);
+    }
+
+    const careers = new Map<
+      string,
+      { label: string; wins: number; losses: number; seasons: Set<number> }
+    >();
+    for (const team of leagueTeams) {
+      const key = team.franchiseKey || team.ownerName || team.name;
+      if (!key) continue;
+      const row = careers.get(key) || {
+        label: team.ownerName || team.name,
+        wins: 0,
+        losses: 0,
+        seasons: new Set<number>(),
+      };
+      row.wins += team.wins || 0;
+      row.losses += team.losses || 0;
+      if ((team.wins || 0) + (team.losses || 0) > 0)
+        row.seasons.add(team.seasonYear);
+      if (team.seasonYear >= Math.max(...Array.from(row.seasons), 0))
+        row.label = team.ownerName || team.name;
+      careers.set(key, row);
+    }
+
+    const careerLines = Array.from(careers.values())
+      .filter(c => c.seasons.size > 0)
+      .sort((a, b) => b.wins - a.wins)
+      .map(c => {
+        const titles = titlesByOwner.get(c.label) || [];
+        return `- ${c.label}: ${c.wins}-${c.losses} regular season over ${c.seasons.size} season${c.seasons.size === 1 ? "" : "s"}, ${titles.length} championship${titles.length === 1 ? "" : "s"}${titles.length ? ` (${titles.join(", ")})` : ""}`;
+      });
+
     // Create prompt for LLM
     const systemPrompt = `You are an expert fantasy football data analyst. Provide detailed, accurate answers with specific numbers, team names, and context.
+
+Answer only from the data below. If something is not here, say so plainly rather than guessing. Note that a champion is decided in the playoffs, so a season's champion is often not the team with the best regular-season record — use the championship table for anything about titles, never the regular-season standings.
 
 League Overview:
 - Name: ${league[0].name}
@@ -122,6 +176,12 @@ League Overview:
 - Total Teams: ${currentTeams.length}
 - Historical Seasons: ${Object.keys(matchupsBySeason).join(', ')}
 - Total Games Played: ${allMatchups.length}
+
+CHAMPIONSHIP HISTORY (authoritative — this is who actually won):
+${podium.length ? podium.map(s => `- ${s.seasonYear}: champion ${s.championName}${s.runnerUpName ? `, runner-up ${s.runnerUpName}` : ""}${s.thirdPlaceName ? `, third ${s.thirdPlaceName}` : ""}`).join("\n") : "- No championship records available"}
+
+CAREER RECORDS (regular season, by owner, across all seasons):
+${careerLines.join("\n")}
 
 Current Season Teams (${league[0].seasonYear}):
 ${currentTeams.map(t => `- ${t.name} (${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''} record, ${(t.pointsFor || 0).toFixed(1)} PF, ${(t.pointsAgainst || 0).toFixed(1)} PA`).join('\n')}

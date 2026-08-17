@@ -37,7 +37,7 @@ export default function NewsletterPage({
   seasons,
   currentSeason,
 }: Props) {
-  const [kind, setKind] = useState<"preview" | "recap">("preview");
+  const [kind, setKind] = useState<"preview" | "recap" | "season">("preview");
   const [week, setWeek] = useState(currentWeek);
   const [season, setSeason] = useState(currentSeason);
   const [copied, setCopied] = useState(false);
@@ -109,6 +109,14 @@ export default function NewsletterPage({
               >
                 Post-week recap
               </Button>
+              <Button
+                variant={kind === "season" ? "default" : "ghost"}
+                size="sm"
+                className="text-xs"
+                onClick={() => setKind("season")}
+              >
+                Season review
+              </Button>
             </div>
 
             <Select
@@ -127,6 +135,7 @@ export default function NewsletterPage({
               </SelectContent>
             </Select>
 
+            {kind !== "season" && (
             <Select
               value={String(week)}
               onValueChange={value => setWeek(Number(value))}
@@ -142,6 +151,7 @@ export default function NewsletterPage({
                 ))}
               </SelectContent>
             </Select>
+            )}
 
             <Button
               onClick={() =>
@@ -162,9 +172,7 @@ export default function NewsletterPage({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-card-foreground">
-                  {generate.data.leagueName} · Week {generate.data.week}{" "}
-                  {generate.data.kind === "preview" ? "preview" : "recap"} ·{" "}
-                  {generate.data.seasonYear}
+                  {generate.data.leagueName} · {generate.data.kind === "season" ? `${generate.data.seasonYear} season review` : `Week ${generate.data.week} ${generate.data.kind === "preview" ? "preview" : "recap"} · ${generate.data.seasonYear}`}
                 </p>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
