@@ -246,6 +246,13 @@ export async function fetchRecentActivity(
   client: any,
   seasonId: number
 ): Promise<ESPNActivity[]> {
+  // espn-fantasy-football-api@2 does not expose an activity method. Keep the
+  // rest of the scheduled sync healthy until activity is implemented against
+  // a supported ESPN endpoint.
+  if (typeof client.getRecentActivity !== "function") {
+    return [];
+  }
+
   try {
     const activity = await client.getRecentActivity({
       seasonId,

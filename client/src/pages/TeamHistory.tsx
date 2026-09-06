@@ -14,12 +14,14 @@ export default function TeamHistory() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/team/:espnTeamId/:espnLeagueId/history");
   
-  const espnTeamId = params?.espnTeamId ? parseInt(params.espnTeamId) : 0;
+  const espnTeamId = params?.espnTeamId ? parseInt(params.espnTeamId) : NaN;
   const espnLeagueId = params?.espnLeagueId || "";
 
+  // Franchise ids for seasons reconstructed from league records are negative
+  // by design, so the id only has to be a number — never a positive one.
   const { data: history, isLoading: historyLoading } = trpc.league.teamHistory.useQuery(
     { espnTeamId, espnLeagueId },
-    { enabled: !!user && espnTeamId > 0 && !!espnLeagueId }
+    { enabled: !!user && Number.isFinite(espnTeamId) && !!espnLeagueId }
   );
 
   if (authLoading) {

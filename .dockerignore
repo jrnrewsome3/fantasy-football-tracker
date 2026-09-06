@@ -7,3 +7,15 @@ coverage
 !.env.example
 *.log
 .DS_Store
+
+# Keep private local context and database backups out of image build layers
+.claude
+backups
+
+.github
+.corepack
+.manus
+.manus-logs
+work
+._*
+**/._*

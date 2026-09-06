@@ -18,6 +18,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { HISTORY_ENABLED } from "@shared/const";
 
 interface TutorialStep {
   id: string;
@@ -31,8 +32,9 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: "welcome",
     title: "Welcome to Trouble in Paradise!",
-    description:
-      "Track your ESPN Fantasy Football league stats, view historical records, analyze matchups, and discover insights to dominate your league. Let's get you started!",
+    description: HISTORY_ENABLED
+      ? "Track your ESPN Fantasy Football league stats, view historical records, analyze matchups, and discover insights to dominate your league. Let's get you started!"
+      : "Track your ESPN Fantasy Football league: live standings, weekly matchups, rosters, and the waiver wire, all kept in sync automatically. Let's get you started!",
     icon: <Trophy className="h-8 w-8 text-primary" />,
   },
   {
@@ -51,9 +53,12 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: "features",
-    title: "Explore Current and Past Seasons",
-    description:
-      "Commissioners can import past standings and champions. Weekly scores appear only when ESPN provides them, and career totals wait until renamed teams and co-managers have been reviewed.",
+    title: HISTORY_ENABLED
+      ? "Explore Current and Past Seasons"
+      : "About Past Seasons",
+    description: HISTORY_ENABLED
+      ? "Commissioners can import past standings and champions. Weekly scores appear only when ESPN provides them, and career totals wait until renamed teams and co-managers have been reviewed."
+      : "Historical pages are paused while past seasons are re-imported from ESPN and verified one at a time. They return as each season passes its checks. See the FAQ for details.",
     icon: <TrendingUp className="h-8 w-8 text-primary" />,
   },
 ];

@@ -21,6 +21,7 @@ import {
   insertTransaction,
   getLeagueByEspnId,
   replaceAvailablePlayers,
+  pruneWeekMatchups,
 } from "./leagueDb";
 
 export interface SyncResult {
@@ -335,6 +336,20 @@ export async function syncWeekMatchups(
           }
         }
       }
+    }
+
+    // Drop pairings ESPN no longer lists for this week. Only for the current
+    // season — archived seasons come from reconciled league records.
+    if (seasonYear === league.seasonYear) {
+      await pruneWeekMatchups(
+        league.id,
+        seasonYear,
+        week,
+        boxscores.map(box => ({
+          homeTeamId: box.homeTeamId,
+          awayTeamId: box.awayTeamId,
+        }))
+      );
     }
 
     return {

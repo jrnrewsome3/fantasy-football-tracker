@@ -28,6 +28,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { HISTORY_ENABLED } from "@shared/const";
 
 type FaqItem = {
   id: string;
@@ -66,14 +67,35 @@ const gettingStarted: FaqItem[] = [
     answer: (
       <>
         <p>
-          One league commissioner connects the ESPN league. The commissioner
-          controls syncing, history imports, invitations, and historical
-          cleanup. League members only create an app account, enter the invite
+          One person connects the ESPN league and becomes its commissioner in
+          this app. That person controls syncing, invitations, renaming, and
+          removal. League members only create an app account, enter the invite
           code, and choose their current ESPN team.
         </p>
         <p>
-          Members never need ESPN developer tools, browser cookies, or the
-          commissioner's ESPN login.
+          Members never need ESPN developer tools, browser cookies, or anyone
+          else's ESPN login.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "setup-commissioner-vs-lm",
+    question:
+      "Is the app commissioner the same as the ESPN League Manager?",
+    answer: (
+      <>
+        <p>
+          No, and the difference matters. The <strong>app commissioner</strong>{" "}
+          is simply whoever connected the league here — that can be any member.
+          The <strong>ESPN League Manager</strong> is the person who controls
+          settings inside ESPN itself.
+        </p>
+        <p>
+          Anything that changes ESPN — most commonly making a season viewable to
+          the public — can only be done by the ESPN League Manager. If that is
+          not you, you will need to ask them. Everything inside this app is
+          controlled by the app commissioner.
         </p>
       </>
     ),
@@ -86,12 +108,25 @@ const gettingStarted: FaqItem[] = [
         <li>Sign in to this app and select Add League.</li>
         <li>Paste the ESPN league URL or enter the League ID.</li>
         <li>
-          If ESPN blocks the connection, enable public viewability in ESPN's
-          Basic Settings and try again.
+          If ESPN blocks the connection, the league is not publicly viewable.
+          The ESPN League Manager must open League &rarr; Settings &rarr; Basic
+          Settings &rarr; Edit and make the league viewable to the public. If
+          you are not the League Manager, ask them to do it.
         </li>
         <li>Select Connect League &amp; Start Auto-Sync.</li>
         <li>Open the league and use Invite Members to copy the invite code.</li>
       </ol>
+    ),
+  },
+  {
+    id: "setup-signin",
+    question: "How do I sign in?",
+    answer: (
+      <p>
+        Sign in with a Google account or an email address. There is no separate
+        password to remember for this app, and your ESPN login is never used or
+        requested.
+      </p>
     ),
   },
   {
@@ -198,26 +233,38 @@ const currentSeason: FaqItem[] = [
   },
   {
     id: "current-tools",
-    question: "What are Weekly Recap, Compare, Highlights, and AI Assistant?",
+    question: HISTORY_ENABLED
+      ? "What are Weekly Recap, Compare, Highlights, and AI Assistant?"
+      : "What are Weekly Recap and AI Assistant?",
     answer: (
       <ul className="list-disc space-y-2 pl-5">
         <li>
           <strong>Weekly Recap:</strong> summarizes completed matchup results,
           close games, top scores, and notable outcomes.
         </li>
-        <li>
-          <strong>Compare:</strong> places two teams side by side using the data
-          currently stored for the league.
-        </li>
-        <li>
-          <strong>Highlights:</strong> surfaces notable performances and league
-          records when score data is available.
-        </li>
+        {HISTORY_ENABLED && (
+          <>
+            <li>
+              <strong>Compare:</strong> places two teams side by side using the
+              data currently stored for the league.
+            </li>
+            <li>
+              <strong>Highlights:</strong> surfaces notable performances and
+              league records when score data is available.
+            </li>
+          </>
+        )}
         <li>
           <strong>AI Assistant:</strong> answers questions using the league data
           available in the app. Its answer is limited by the completeness of
           that data.
         </li>
+        {!HISTORY_ENABLED && (
+          <li className="text-muted-foreground">
+            Compare and Highlights are paused while past seasons are rebuilt.
+            See the Historical Seasons section below.
+          </li>
+        )}
       </ul>
     ),
   },
@@ -230,6 +277,114 @@ const currentSeason: FaqItem[] = [
         standings, matchups, available players, weather, and trends, but each
         manager makes final lineup, waiver, trade, and roster decisions in ESPN.
       </p>
+    ),
+  },
+];
+
+/**
+ * Shown while HISTORY_ENABLED is false. Historical screens are hidden because
+ * the imported data could not be verified; these answers explain that plainly
+ * rather than describing features nobody can currently reach.
+ */
+const historyPaused: FaqItem[] = [
+  {
+    id: "history-why-hidden",
+    question:
+      "Why can't I see all-time stats, past seasons, or the owner leaderboard?",
+    answer: (
+      <>
+        <p>
+          Those pages are turned off on purpose. An audit found that the
+          imported history could not be trusted: career win totals were wrong,
+          championships were missing or incorrect, and some past matchups were
+          matched to the wrong teams.
+        </p>
+        <p>
+          Rather than show numbers that look official and are not, the
+          historical pages are hidden while past seasons are re-imported from
+          ESPN and checked one season at a time. Nothing about the current
+          season is affected.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "history-what-broke",
+    question: "What was actually wrong with the old history?",
+    answer: (
+      <ul className="list-disc space-y-2 pl-5">
+        <li>
+          Scores were stored as whole numbers, so fractional results — the ones
+          that decide most fantasy games — were lost.
+        </li>
+        <li>
+          Playoff rounds that span two weeks were recorded twice, each with a
+          partial score.
+        </li>
+        <li>
+          Champions were guessed from a fixed week number instead of read from
+          the actual playoff bracket.
+        </li>
+        <li>
+          Owners were identified by display name, so a manager who renamed a
+          team could be counted as two different people.
+        </li>
+      </ul>
+    ),
+  },
+  {
+    id: "history-when-back",
+    question: "When will history come back?",
+    answer: (
+      <>
+        <p>
+          Season by season, as each one is verified. A season is only published
+          when every week has the right number of games, no team appears twice
+          in a week, the win-loss records calculated from the schedule match the
+          records ESPN itself reports, and the champion taken from the playoff
+          bracket agrees with the final standings.
+        </p>
+        <p>
+          Any season that fails those checks stays hidden rather than being
+          published with a warning label.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "history-unlock",
+    question: "Past seasons are private in ESPN. How do we unlock them?",
+    answer: (
+      <>
+        <p>
+          Each ESPN season has its own visibility setting, and only the ESPN
+          League Manager can change it. For each season: open the league for
+          that year, then League &rarr; Settings &rarr; Basic Settings &rarr;
+          Edit, and make the league viewable to the public.
+        </p>
+        <p>
+          This exposes standings and scores for reading. It does not let anyone
+          join the league, change rosters, or alter settings.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "history-owners",
+    question: "How will renamed teams, co-managers, and past owners be handled?",
+    answer: (
+      <>
+        <p>
+          Seasons from 2018 onward carry a permanent ESPN id for each owner, so
+          the same manager is recognized across seasons even if the team name
+          changed. Career records follow the person, not the team name.
+        </p>
+        <p>
+          Teams with co-managers are supported, and each co-manager receives
+          full credit for that season. Where ESPN cannot identify an owner
+          automatically, the commissioner will be asked to assign them once.
+        </p>
+      </>
     ),
   },
 ];
@@ -334,10 +489,14 @@ const accessAndPrivacy: FaqItem[] = [
     question: "What can commissioners do that members cannot?",
     answer: (
       <p>
-        Commissioners can connect and sync ESPN data, invite members, import or
-        upload history, clean up historical ownership, rename the league, and
-        delete it from this app. Members can view the shared league and select
-        their own current team.
+        Commissioners can connect and sync ESPN data, invite members, rename the
+        league, and delete it from this app
+        {HISTORY_ENABLED
+          ? ", plus import history and clean up historical ownership"
+          : ""}
+        . Members can view the shared league and select their own current team.
+        Note that this is separate from being the ESPN League Manager, who
+        controls settings inside ESPN itself.
       </p>
     ),
   },
@@ -432,13 +591,31 @@ const troubleshooting: FaqItem[] = [
   {
     id: "trouble-history",
     question:
-      "The current season works, but archived weeks are blank. Is that an error?",
-    answer: (
+      "The current season works, but past seasons show a “being rebuilt” message. Is that an error?",
+    answer: HISTORY_ENABLED ? (
       <p>
         Not necessarily. ESPN may expose a season's final standings while
         withholding its weekly matchup pages. Check Browse Seasons: a “final
         standings imported” note confirms that the partial archive is working as
         designed.
+      </p>
+    ) : (
+      <p>
+        No, that is expected. Historical pages are intentionally turned off
+        while past seasons are re-imported and verified. See the Historical
+        Seasons section above for what is happening and why.
+      </p>
+    ),
+  },
+  {
+    id: "trouble-access",
+    question: "I get “You do not have access to this league.” What now?",
+    answer: (
+      <p>
+        If you connected the league yourself, this should resolve on its own the
+        next time you open it — the app repairs that state automatically. If you
+        are a league member, you need an invite code: return to the dashboard,
+        select Join Team League, and enter the code from your commissioner.
       </p>
     ),
   },
@@ -548,8 +725,9 @@ export default function FAQ() {
               What the app includes
             </CardTitle>
             <CardDescription>
-              Current-season decision support plus an honest, coverage-aware
-              historical archive
+              {HISTORY_ENABLED
+                ? "Current-season decision support plus an honest, coverage-aware historical archive"
+                : "Current-season decision support. Historical analytics are paused while past seasons are rebuilt and verified."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -567,10 +745,18 @@ export default function FAQ() {
               <div className="flex gap-3">
                 <History className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Historical seasons</h3>
+                  <h3 className="font-semibold">
+                    Historical seasons
+                    {!HISTORY_ENABLED && (
+                      <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        Paused
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    Final standings, champions, and weekly scores when ESPN
-                    makes each type of archive data available.
+                    {HISTORY_ENABLED
+                      ? "Final standings, champions, and weekly scores when ESPN makes each type of archive data available."
+                      : "Being re-imported from ESPN and verified season by season. Returns once each season passes its checks."}
                   </p>
                 </div>
               </div>
@@ -579,18 +765,26 @@ export default function FAQ() {
                 <div>
                   <h3 className="font-semibold">Shared league access</h3>
                   <p className="text-sm text-muted-foreground">
-                    Commissioner-managed invites, team selection, co-manager
-                    history, and renamed-franchise cleanup.
+                    Commissioner-managed invites and team selection. Members
+                    join with a code — never with ESPN credentials.
                   </p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <BarChart3 className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Career analytics</h3>
+                  <h3 className="font-semibold">
+                    Career analytics
+                    {!HISTORY_ENABLED && (
+                      <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        Paused
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
-                    W-L records and championships, with score-based statistics
-                    only where weekly matchup data exists.
+                    {HISTORY_ENABLED
+                      ? "W-L records and championships, with score-based statistics only where weekly matchup data exists."
+                      : "Career records and championships return with verified history, credited to owners rather than team names."}
                   </p>
                 </div>
               </div>
@@ -609,8 +803,9 @@ export default function FAQ() {
                 <div>
                   <h3 className="font-semibold">Recaps and AI questions</h3>
                   <p className="text-sm text-muted-foreground">
-                    Weekly summaries, comparisons, highlights, and answers based
-                    on the league data actually stored.
+                    {HISTORY_ENABLED
+                      ? "Weekly summaries, comparisons, highlights, and answers based on the league data actually stored."
+                      : "Weekly summaries and answers based on the current-season data actually stored."}
                   </p>
                 </div>
               </div>
@@ -633,7 +828,14 @@ export default function FAQ() {
           title="Current Season & Decision Tools"
           items={currentSeason}
         />
-        <FaqSection title="Historical Seasons" items={historicalData} />
+        <FaqSection
+          title={
+            HISTORY_ENABLED
+              ? "Historical Seasons"
+              : "Historical Seasons (temporarily unavailable)"
+          }
+          items={HISTORY_ENABLED ? historicalData : historyPaused}
+        />
         <FaqSection title="Access, Privacy & Export" items={accessAndPrivacy} />
         <FaqSection title="Troubleshooting" items={troubleshooting} />
 
