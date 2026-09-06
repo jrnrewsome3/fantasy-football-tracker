@@ -1,3 +1,9 @@
+import {
+  MIN_OWNER_PERCENTAGE_GAMES,
+  isWinPercentageEligible,
+  sortOwnerLeaderboard,
+  summarizeOwnerLeaderboard,
+} from "@shared/ownerRanking";
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -142,15 +148,8 @@ export default function OwnerLeaderboard() {
     );
   }
 
-  // Sort leaderboard based on selected criteria
-  const sortedLeaderboard = leaderboard
-    ? [...leaderboard].sort((a, b) => {
-        if (sortBy === "wins") return b.totalWins - a.totalWins;
-        if (sortBy === "winPct") return b.winPercentage - a.winPercentage;
-        if (sortBy === "points") return b.totalPointsFor - a.totalPointsFor;
-        return 0;
-      })
-    : [];
+  const sortedLeaderboard = sortOwnerLeaderboard(leaderboard || [], sortBy);
+  const summary = summarizeOwnerLeaderboard(leaderboard || []);
 
   return (
     <div className="container mx-auto py-4 sm:py-8 space-y-6">
@@ -199,10 +198,10 @@ export default function OwnerLeaderboard() {
             </CardHeader>
             <CardContent>
               <div className="text-xl sm:text-2xl font-bold text-primary">
-                {sortedLeaderboard[0]?.totalWins || 0}
+                {summary.mostWins?.totalWins ?? 0}
               </div>
               <p className="text-xs text-muted-foreground line-clamp-1">
-                {sortedLeaderboard[0]?.ownerName}
+                {summary.mostWins?.ownerName}
               </p>
             </CardContent>
           </Card>
@@ -214,16 +213,16 @@ export default function OwnerLeaderboard() {
             </CardHeader>
             <CardContent>
               <div className="text-xl sm:text-2xl font-bold text-primary">
-                {Math.max(...leaderboard.map(o => o.winPercentage)).toFixed(1)}%
+                {summary.bestWinPercentage
+                  ? `${summary.bestWinPercentage.winPercentage.toFixed(1)}%`
+                  : "—"}
               </div>
               <p className="text-xs text-muted-foreground line-clamp-1">
-                {
-                  leaderboard.find(
-                    o =>
-                      o.winPercentage ===
-                      Math.max(...leaderboard.map(x => x.winPercentage))
-                  )?.ownerName
-                }
+                {summary.bestWinPercentage?.ownerName ||
+                  "No qualifying owner yet"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Current owners · {MIN_OWNER_PERCENTAGE_GAMES}+ games
               </p>
             </CardContent>
           </Card>
@@ -235,16 +234,10 @@ export default function OwnerLeaderboard() {
             </CardHeader>
             <CardContent>
               <div className="text-xl sm:text-2xl font-bold text-primary">
-                {Math.max(...leaderboard.map(o => o.totalPointsFor)).toFixed(0)}
+                {summary.mostPoints?.totalPointsFor.toFixed(0) ?? "0"}
               </div>
               <p className="text-xs text-muted-foreground line-clamp-1">
-                {
-                  leaderboard.find(
-                    o =>
-                      o.totalPointsFor ===
-                      Math.max(...leaderboard.map(x => x.totalPointsFor))
-                  )?.ownerName
-                }
+                {summary.mostPoints?.ownerName}
               </p>
             </CardContent>
           </Card>
@@ -258,7 +251,9 @@ export default function OwnerLeaderboard() {
             <div>
               <CardTitle>Rankings</CardTitle>
               <CardDescription>
-                Lifetime performance across all seasons
+                Lifetime records remain visible for every owner. Win-percentage
+                rankings require current league participation and at least{" "}
+                {MIN_OWNER_PERCENTAGE_GAMES} games.
               </CardDescription>
             </div>
             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
@@ -308,23 +303,39 @@ export default function OwnerLeaderboard() {
                 </TableHeader>
                 <TableBody>
                   {sortedLeaderboard.map((owner, index) => (
-                    <TableRow key={owner.ownerName}>
+                    <TableRow key={owner.franchiseKey}>
                       <TableCell className="font-medium text-xs sm:text-sm">
-                        {index + 1 === 1 && (
-                          <Trophy className="h-4 w-4 text-yellow-500 inline mr-1" />
-                        )}
-                        {index + 1 === 2 && (
-                          <Trophy className="h-4 w-4 text-gray-400 inline mr-1" />
-                        )}
-                        {index + 1 === 3 && (
-                          <Trophy className="h-4 w-4 text-amber-600 inline mr-1" />
-                        )}
-                        {index + 1}
+                        {(sortBy !== "winPct" ||
+                          isWinPercentageEligible(owner)) &&
+                          index + 1 === 1 && (
+                            <Trophy className="h-4 w-4 text-yellow-500 inline mr-1" />
+                          )}
+                        {(sortBy !== "winPct" ||
+                          isWinPercentageEligible(owner)) &&
+                          index + 1 === 2 && (
+                            <Trophy className="h-4 w-4 text-gray-400 inline mr-1" />
+                          )}
+                        {(sortBy !== "winPct" ||
+                          isWinPercentageEligible(owner)) &&
+                          index + 1 === 3 && (
+                            <Trophy className="h-4 w-4 text-amber-600 inline mr-1" />
+                          )}
+                        {sortBy === "winPct" && !isWinPercentageEligible(owner)
+                          ? "—"
+                          : index + 1}
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">
                           {owner.ownerName}
                         </div>
+                        {!isWinPercentageEligible(owner) && (
+                          <div className="max-w-48 whitespace-normal text-xs text-muted-foreground">
+                            {!owner.isCurrentOwner
+                              ? "Former owner"
+                              : `${owner.totalGames} games · ${MIN_OWNER_PERCENTAGE_GAMES} needed`}
+                            {sortBy === "winPct" ? " · not ranked" : ""}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-xs sm:text-sm">
                         {owner.totalWins}
