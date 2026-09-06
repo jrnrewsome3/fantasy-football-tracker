@@ -1,44 +1,48 @@
-# Production deploy checklist (Railway + Clerk + OpenAI)
+# Production deployment and rollback
 
-## Accounts to create
-1. Railway — https://railway.app (or Render/Fly)
-2. Clerk — https://dashboard.clerk.com (Hobby free)
-3. OpenAI — https://platform.openai.com (optional for draft week)
+Updated September 6, 2026. This replaces the former Railway instructions.
 
-## Clerk setup
-1. Create an application
-2. Enable Email + Google (recommended)
-3. Copy **Publishable key** → `VITE_CLERK_PUBLISHABLE_KEY`
-4. Copy **Secret key** → `CLERK_SECRET_KEY`
-5. In Clerk → Paths: set Sign-in `/sign-in`, Sign-up `/sign-up`
-6. After you have a production URL, add it under Allowed origins / redirect URLs
+## Actual environment
 
-## Railway setup
-1. New project → Deploy from this GitHub repo
-2. Add a **MySQL** plugin/service in the same project
-3. Add a web service from the repo (Nixpacks or Dockerfile)
-4. Set variables from `.env.example` (at minimum: `DATABASE_URL`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`, `JWT_SECRET`, `OPENAI_API_KEY`)
-5. Important: `VITE_*` vars must be present at **build** time on Railway
-6. Run migrations once: `pnpm db:push` (Railway shell / one-off) against `DATABASE_URL`
-7. Health check: `GET /api/health` should return `{ status: "ok", db: "connected" }`
+- App: https://fantasy.lifequestai.com
+- SSH: `root@187.77.199.41`
+- Source directory: `/opt/fantasy-football` is a copied source tree, not a Git checkout. Do not use `git pull` there.
+- Docker Compose services: `app`, `database`. Preserve the existing proxy setup.
+- App binds `127.0.0.1:3000`; MySQL uses its existing persistent volume.
+- Local Git source: `/Users/lifequestaimac/fantasy-football-tracker`.
+- The current Clerk instance is retained. The public key is required at build time; runtime secrets stay in the existing server `.env`. Never print or copy secrets into release logs.
 
-## Local smoke test
-```bash
-pnpm install
-cp .env.example .env   # fill real values
-pnpm db:push
-pnpm dev
-# open http://localhost:3000 → Sign In → Add League → Sync
+## Before deployment
+
+1. Confirm approval and exact release scope; inspect `git status` and the full diff, including new files. Preserve `.claude/` and other unrelated work.
+2. Use the packageManager version from package.json (pnpm 10.4.1). Run `pnpm check`, `pnpm test`, and `pnpm build`. If a mismatched global pnpm attempts to reinstall dependencies, stop and use the installed tool entry points or the pinned package manager; do not purge dependencies as a workaround.
+3. Tests with live ESPN calls can emit expected errors; inspect final results. A successful suite does not establish authenticated browser behavior.
+4. Record the Git revision/release file hashes and inspect production Compose status. Compare production source with the expected base before overwriting any file.
+5. Preserve the running image using a unique rollback tag. Back up the files being replaced outside the build context. Check the latest database backup checksum and gzip integrity. A checksum is not a restore rehearsal; keep database restoration testing as a separate operational task.
+
+## Apply an approved code-only release
+
+Transfer an explicit allowlist of approved files. Do not copy `.env`, `.claude/`, node_modules, local build output, database dumps, or unrelated files. Build with the existing Compose configuration and environment:
+
+```sh
+cd /opt/fantasy-football
+docker compose build app
+docker compose up -d --no-deps --no-build app
 ```
 
-## First ESPN sync on production
-1. Sign in
-2. Add League → ESPN League ID + private cookies (`espn_s2`, `SWID`)
-3. Sync All Seasons
-4. Later refreshes: League page → **Sync Data**
+A build failure leaves the existing running app in place. Do not restart until the build succeeds. The Dockerfile runs TypeScript and production builds; run tests before this step. Do not run migrations or history imports for a code-only patch. Never use `docker compose down -v`.
 
-## Stack
-- Auth: Clerk
-- AI: OpenAI API
-- Host: Railway (or any Node host) + Docker
-- DB: your MySQL instance
+## Verify the release
+
+- Wait for app health; check `/api/health` reports `status: ok` and `db: connected`.
+- Verify deployed assets contain the intended change and inspect startup/application errors.
+- Check sign-in → dashboard → league → selected team → My Week → standings → matchups → available players → Historical Highlights, on desktop and phone where possible. State explicitly when no authenticated session is available.
+- Before the draft, absent roster/projection content can be expected. Do not fabricate data to fill it.
+- Confirm the next scheduled sync updates supported categories without the missing-activity-method error. Do not trigger production-data writes solely to test a UI release without authorization.
+- Record the deployed source revision/file hashes, image ID, rollback tag, and verification limits.
+
+## Roll back
+
+Use the retained image, without rebuilding. Retag it to the app image name reported by the existing Compose configuration (currently `fantasy-football-app:latest`), then recreate only `app` with `docker compose up -d --no-deps --no-build app`. Restore the backed-up release source files as well, so the next build does not reintroduce the failed patch; remove only files introduced by that release, using its manifest. Verify health and member access again.
+
+A code-only rollback does not roll back database data. Preserve the current `.env`, database, volumes, and proxy. Confirm rollback authorization is included in the release or obtain it before performing a rollback.

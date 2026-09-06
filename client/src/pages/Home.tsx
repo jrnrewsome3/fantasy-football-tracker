@@ -139,11 +139,11 @@ export default function Home() {
               <Activity className="h-6 w-6 text-primary" />
             </div>
             <h3 className="text-xl font-semibold mb-2 text-card-foreground">
-              Recent Activity
+              Automatic Refreshes
             </h3>
             <p className="text-muted-foreground">
-              Follow the league activity ESPN returns during automatic
-              refreshes.
+              Keep standings, matchups, and available-player data refreshed from
+              ESPN throughout the season.
             </p>
           </div>
         </div>

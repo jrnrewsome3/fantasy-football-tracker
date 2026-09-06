@@ -1,60 +1,36 @@
-# Starting a new session
+# Trouble in Paradise: start here
 
-Paste the block below into a fresh Claude Code session started in
-`/Users/lifequestaimac/LifeQuestAIWebsite`.
+Updated September 6, 2026.
 
-Memory files load automatically, so most context arrives on its own — this
-prompt just points at the work and sets the ground rules.
+Repository: `/Users/lifequestaimac/fantasy-football-tracker`.
+Production: https://fantasy.lifequestai.com
+Server: `root@187.77.199.41`; copied source at `/opt/fantasy-football` (not a Git checkout).
+Current release branch: `chore/sync-production-docker`; PR #22. Verify branch and status each session.
 
----
+Read this file, DEPLOY.md, the current priorities at the top of todo.md, and the complete working diff. Preserve the unrelated untracked `.claude/` directory.
 
-```
-Picking up the Trouble in Paradise fantasy football app (fantasy.lifequestai.com).
-Read your memory for fantasy-football-tracker-status first — it has the
-architecture rules, deploy process, and outstanding items. The repo is at
-fantasy-football-tracker/ on branch chore/sync-production-docker.
+## Current product decisions
 
-The 2026 season starts soon and the league is testing the app now. My work from
-here is fixing what testers report and adding features, so expect small
-iterative changes rather than big builds.
+- Roger approved deployment of the existing activity guard, league-scoped draft history, and instruction cleanup on September 6.
+- Draft summaries are commissioner-supplied. Keep source attribution visible. Do not invent missing annual draft orders or claim independent verification of owner averages.
+- Draft history covers 2018–2026; completed championship records cover 2018–2025. Show the section only for ESPN league 1489106 with All Seasons selected.
+- ESPN activity is unavailable through the installed client. Keep the guard and honest UI wording; other supported data continues to refresh.
+- Matchup/player content will develop after the draft and during the season. Missing pre-draft content is not permission to fabricate projections or results.
+- Defer Weekly Preview until after the draft. Start with a detailed individual preview based on selected starters for that week, then a league story paired with the recap. Compute facts in code, label projections, expose freshness and missing data, and let AI narrate only the supplied facts. Do not invent win probabilities.
 
-Ground rules that matter, learned the hard way this project:
+## Architecture and protected data
 
-- Identity is franchiseKey (the person), never team name or team id. Team names
-  change mid-season.
-- matchups store ESPN team ids — join via teams.espnTeamId AND seasonYear.
-  Historical franchise ids are negative.
-- Exclude scoringWeeks > 1 from any single-game record (2018-2020 playoff rounds
-  were two weeks combined).
-- For anything AI-written: compute the facts in code and hand the model a brief.
-  Never let it derive records, margins or streaks.
-- Run pnpm run check and pnpm test BEFORE deploying, not alongside. Two tests in
-  league.sync.test.ts and league.teams.test.ts are flaky — they call live ESPN.
-- Verify against real data before telling me something works. Several bugs this
-  project only surfaced by testing a case whose answer I already knew.
+- Franchise identity is `franchiseKey`, never team name or ESPN team ID.
+- Matchups store ESPN team IDs: resolve using `teams.espnTeamId` plus season and league scope. Historical franchise IDs can be negative.
+- Exclude `scoringWeeks > 1` from single-game records.
+- Calculate championships, wins, margins, streaks, and all other facts in code before supplying them to a model.
+- Verified league history is protected. Do not re-enable legacy import tools or run Sync All Seasons as a maintenance step.
+- Keep the current Clerk instance until a separately approved migration maps users and league memberships.
 
-Explain things in plain English first — I build with AI but I'm not a developer.
-Lead with what to do, then the detail.
+## Release workflow
 
-Here's what I need:
-[describe the bug report or feature]
-```
+Make changes locally, inspect the exact diff, run TypeScript, tests, and client/server builds before deployment. Follow DEPLOY.md for copied-source deployment and image rollback. No production data repair, migration, secret change, or history import is part of routine code cleanup.
 
----
+Use existing authorization for its stated scope. Future releases or consequential changes need explicit approval; this release is not blanket authorization for later features. Report what was actually verified, distinguish health from a working member journey, and explain findings in plain English.
 
-## If a tester reports a bug
-
-Include: which screen, what they saw, what they expected, phone or computer.
-Screenshots help most. The UAT plan with expected values is at
-https://claude.ai/code/artifact/d34d064e-c776-4136-b4a0-999a195080f8
-
-## Quick reference
-
-| Thing | Where |
-| --- | --- |
-| App | https://fantasy.lifequestai.com |
-| Server | `root@187.77.199.41`, app at `/opt/fantasy-football` |
-| League guide (Craft) | 🏈 Trouble in Paradise folder |
-| Audit + rationale | `AUDIT.md` |
-| History tooling | `scripts/history/` |
-| Feature flags | `shared/const.ts` |
+AUDIT.md and the older checklist below todo.md are historical context, not current operating instructions. PRODUCTION_GUIDE.md is a planning document, not the live runbook.

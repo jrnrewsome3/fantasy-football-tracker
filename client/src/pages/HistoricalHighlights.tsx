@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, TrendingUp, TrendingDown, Zap, Target, Award, ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
+import DraftHistorySection from "@/components/DraftHistorySection";
 
 export default function HistoricalHighlights() {
   const { user } = useAuth();
@@ -468,6 +469,9 @@ export default function HistoricalHighlights() {
             </Card>
           </div>
         </div>
+        {selectedSeason === "all" && league.espnLeagueId === "1489106" && (
+          <DraftHistorySection />
+        )}
       </div>
     </div>
   );

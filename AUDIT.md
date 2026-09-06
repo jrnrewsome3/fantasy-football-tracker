@@ -1,3 +1,5 @@
+> Historical audit dated August 15, 2026. Findings and proposed repairs describe that snapshot, not current production. Follow HANDOFF.md and DEPLOY.md; do not reimport protected history or run repairs from this document.
+
 # Fantasy Football Tracker — Architecture & Data Audit
 
 **Repo:** `jrnrewsome3/fantasy-football-tracker` · **Audited:** 2026-08-15 · **Scope:** read-only code inspection; no code, schema, or data was modified.

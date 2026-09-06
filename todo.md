@@ -1,3 +1,19 @@
+# Current priorities — September 6, 2026
+
+- [ ] Complete and record deployment verification for the approved activity/draft-history cleanup.
+- [ ] After the draft, verify selected starters, projections, matchups, and freshness against ESPN.
+- [ ] Build Weekly Preview after real roster data is available: detailed individual matchup preview first, then league story alongside the recap. Compute facts in code; label projections and source timestamps.
+- [ ] Surface partial sync failures and add explicit My Week error/retry states.
+- [ ] Add a readiness panel for sync freshness, team assignments, and history coverage.
+- [ ] Move commissioner-supplied draft summaries into versioned structured records with per-season sources and sample sizes.
+- [ ] Add authenticated desktop/mobile smoke tests and repeatable ESPN fixtures.
+- [ ] Measure and reduce large route/AI-rendering payloads.
+- [ ] Plan Clerk production migration with user/membership mapping before changing keys.
+
+The checklist below is an archived development log. Its checked boxes are not proof of current functionality; duplicate or contradictory items do not override HANDOFF.md or DEPLOY.md. Protected history must not be reimported. ESPN activity remains unavailable.
+
+---
+
 # Fantasy Football Tracker - TODO
 
 ## Database Schema

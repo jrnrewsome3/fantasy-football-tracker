@@ -671,6 +671,9 @@ export default function LeagueDetail() {
                   transactions?.length || 0
                 )}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                ESPN activity feed not currently available
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -1216,7 +1219,8 @@ export default function LeagueDetail() {
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
                 <CardDescription>
-                  Latest transactions and league activity
+                  Previously imported transactions. ESPN activity is not
+                  available through the current integration.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1251,7 +1255,8 @@ export default function LeagueDetail() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    No recent activity
+                    ESPN activity is not available right now. League standings,
+                    matchups, and available players will continue to sync.
                   </div>
                 )}
               </CardContent>

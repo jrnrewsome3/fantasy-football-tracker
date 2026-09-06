@@ -2,7 +2,9 @@
 
 A full-stack web application for tracking, analyzing, and visualizing ESPN Fantasy Football league data across multiple seasons. Built for the **Trouble in Paradise** league, this app syncs historical data from 2018 to present and provides rich analytics, AI-powered insights, and a clean dashboard experience.
 
-**Production target:** self-hosted on Railway (or any Node host) with **Clerk** auth and **OpenAI** for AI features.
+**Production:** Docker Compose on the server at `187.77.199.41`, serving https://fantasy.lifequestai.com, with **Clerk** auth and **OpenAI** for AI features. Start with [HANDOFF.md](./HANDOFF.md) and [DEPLOY.md](./DEPLOY.md).
+
+**Current scope:** supported ESPN standings, matchups, and available-player refreshes; commissioner-supplied draft summaries; protected historical records. Activity is unavailable through the current ESPN client. The feature catalogue below includes historical development descriptions and is not a release-verification checklist. Weekly Preview is deferred until after the draft.
 
 See [`DEPLOY.md`](./DEPLOY.md) for the production deploy checklist.
 
@@ -10,7 +12,7 @@ See [`DEPLOY.md`](./DEPLOY.md) for the production deploy checklist.
 
 ## Overview
 
-This application connects directly to ESPN's Fantasy Football API to pull league data — teams, matchups, standings, player stats, and transactions — and stores it in a persistent database for fast querying and historical analysis. Users authenticate via **Clerk**, add their ESPN league credentials, and can then explore everything from weekly matchups to all-time standings.
+This application connects directly to ESPN's Fantasy Football API to pull league data — teams, matchups, standings, and available player data — and stores it in a persistent database for fast querying and historical analysis. Users authenticate via **Clerk**, add their ESPN league credentials, and can then explore everything from weekly matchups to all-time standings.
 
 ---
 
@@ -25,7 +27,7 @@ This application connects directly to ESPN's Fantasy Football API to pull league
 - Add a new ESPN league by providing the League ID, season year, and optional private credentials (`espnS2` and `SWID` cookies for private leagues)
 - Rename leagues with a custom display name
 - Delete leagues from the tracker
-- Sync a single season or all historical seasons (2018–present) in one operation
+- Refresh supported current-season data; archived history is protected and must not be reimported as routine maintenance
 
 ### League Detail Page
 - Defaults to **All-Time** view, aggregating records across every synced season
@@ -37,7 +39,7 @@ This application connects directly to ESPN's Fantasy Football API to pull league
 - All-Time standings aggregate wins, losses, ties, and points across all seasons
 - Single Season standings filter to the selected year
 - Columns: Rank, Team Name, ESPN Team ID, W, L, T, Points For, Points Against
-- ESPN Team ID column enables owner identification independent of team name changes
+- Franchise identity uses franchiseKey; ESPN team IDs must be resolved within their league and season
 
 ### Weekly Matchups
 - View head-to-head matchups for any week and season

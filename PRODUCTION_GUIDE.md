@@ -1,3 +1,5 @@
+> Historical planning guide, not the current deployment runbook. Use DEPLOY.md for the actual Docker environment and HANDOFF.md for protected data and release rules.
+
 # Production Readiness Guide: Vibe-Coded App to Scalable for 1000 Users
 
 > **Project:** fantasy-football-tracker  
