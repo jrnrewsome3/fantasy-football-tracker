@@ -92,11 +92,12 @@ export default function NewsletterPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+            <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-lg bg-muted p-1 sm:w-auto">
               <Button
                 variant={kind === "preview" ? "default" : "ghost"}
                 size="sm"
-                className="text-xs"
+                className="h-auto min-h-11 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug"
+                aria-pressed={kind === "preview"}
                 onClick={() => setKind("preview")}
               >
                 Pre-week preview
@@ -104,7 +105,8 @@ export default function NewsletterPage({
               <Button
                 variant={kind === "recap" ? "default" : "ghost"}
                 size="sm"
-                className="text-xs"
+                className="h-auto min-h-11 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug"
+                aria-pressed={kind === "recap"}
                 onClick={() => setKind("recap")}
               >
                 Post-week recap
@@ -112,7 +114,8 @@ export default function NewsletterPage({
               <Button
                 variant={kind === "season" ? "default" : "ghost"}
                 size="sm"
-                className="text-xs"
+                className="h-auto min-h-11 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug"
+                aria-pressed={kind === "season"}
                 onClick={() => setKind("season")}
               >
                 Season review
@@ -136,21 +139,21 @@ export default function NewsletterPage({
             </Select>
 
             {kind !== "season" && (
-            <Select
-              value={String(week)}
-              onValueChange={value => setWeek(Number(value))}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 18 }, (_, i) => i + 1).map(w => (
-                  <SelectItem key={w} value={String(w)}>
-                    Week {w}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={String(week)}
+                onValueChange={value => setWeek(Number(value))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 18 }, (_, i) => i + 1).map(w => (
+                    <SelectItem key={w} value={String(w)}>
+                      Week {w}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
 
             <Button
@@ -170,16 +173,20 @@ export default function NewsletterPage({
 
           {generate.data && !generate.isPending && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-card-foreground">
-                  {generate.data.leagueName} · {generate.data.kind === "season" ? `${generate.data.seasonYear} season review` : `Week ${generate.data.week} ${generate.data.kind === "preview" ? "preview" : "recap"} · ${generate.data.seasonYear}`}
+              <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+                <p className="min-w-0 break-words text-sm font-medium text-card-foreground">
+                  {generate.data.leagueName} ·{" "}
+                  {generate.data.kind === "season"
+                    ? `${generate.data.seasonYear} season review`
+                    : `Week ${generate.data.week} ${generate.data.kind === "preview" ? "preview" : "recap"} · ${generate.data.seasonYear}`}
                 </p>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <div className="flex max-w-full flex-wrap items-center gap-1 rounded-lg bg-muted p-1">
                     <Button
                       variant={plainText ? "default" : "ghost"}
                       size="sm"
-                      className="text-xs"
+                      className="min-h-11 text-xs"
+                      aria-pressed={plainText}
                       onClick={() => setPlainText(true)}
                       title="For iMessage, WhatsApp, GroupMe — anywhere that shows asterisks as asterisks"
                     >
@@ -188,14 +195,20 @@ export default function NewsletterPage({
                     <Button
                       variant={!plainText ? "default" : "ghost"}
                       size="sm"
-                      className="text-xs"
+                      className="min-h-11 text-xs"
+                      aria-pressed={!plainText}
                       onClick={() => setPlainText(false)}
                       title="For Discord, Slack, or anywhere that renders markdown"
                     >
                       Markdown
                     </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={copy}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 shrink-0"
+                    onClick={copy}
+                  >
                     {copied ? (
                       <Check className="h-4 w-4" />
                     ) : (
@@ -206,7 +219,7 @@ export default function NewsletterPage({
                 </div>
               </div>
 
-              <div className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed text-card-foreground">
+              <div className="break-words whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed text-card-foreground">
                 {plainText
                   ? toPlainText(generate.data.markdown)
                   : generate.data.markdown}
