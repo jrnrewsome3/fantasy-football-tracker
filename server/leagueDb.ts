@@ -1019,7 +1019,15 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
       .innerJoin(leagues, eq(teams.leagueId, leagues.id))
       .where(eq(leagues.espnLeagueId, espnLeagueId));
 
-    // Group by owner name and aggregate stats
+    // Current participation is a season-scoped franchise mapping, not an app login.
+    // Include current teams even before their first game has been played.
+    const currentFranchises = new Set(
+      allTeams.filter(row => row.teams.seasonYear === row.leagues.seasonYear)
+        .map(row => row.teams.franchiseKey || row.teams.ownerName)
+        .filter(Boolean)
+    );
+
+    // Aggregate career records by franchise.
     const ownerStatsMap = new Map<
       string,
       {
@@ -1101,7 +1109,7 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     }
 
     // Convert to array and calculate win percentages
-    const leaderboard = Array.from(ownerStatsMap.values()).map(owner => {
+    const leaderboard = Array.from(ownerStatsMap.entries()).map(([franchiseKey, owner]) => {
       const totalGames = owner.totalWins + owner.totalLosses + owner.totalTies;
       const winPercentage =
         totalGames > 0 ? (owner.totalWins / totalGames) * 100 : 0;
@@ -1112,6 +1120,8 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
 
       return {
         ...owner,
+        franchiseKey,
+        isCurrentOwner: currentFranchises.has(franchiseKey),
         winPercentage,
         avgPointsPerSeason,
         totalGames,

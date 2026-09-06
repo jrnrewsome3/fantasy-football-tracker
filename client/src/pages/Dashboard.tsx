@@ -261,15 +261,15 @@ export default function Dashboard() {
                 {leagues.map(league => (
                   <div
                     key={league.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="flex min-w-0 flex-col gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer lg:flex-row lg:items-center lg:justify-between"
                     onClick={() => setLocation(`/league/${league.id}`)}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded bg-primary/10 flex items-center justify-center">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="h-12 w-12 shrink-0 rounded bg-primary/10 flex items-center justify-center">
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-card-foreground">
+                      <div className="min-w-0">
+                        <h3 className="break-words font-semibold text-card-foreground">
                           {league.name === `League ${league.espnLeagueId}`
                             ? `ESPN League ${league.espnLeagueId}`
                             : league.name}
@@ -278,9 +278,9 @@ export default function Dashboard() {
                           {league.seasonYear} Season • Week{" "}
                           {league.currentWeek || 1}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
                           <RefreshCw
-                            className={`h-3 w-3 ${league.lastSyncStatus === "syncing" ? "animate-spin" : ""}`}
+                            className={`mt-0.5 h-3 w-3 shrink-0 ${league.lastSyncStatus === "syncing" ? "animate-spin" : ""}`}
                           />
                           {league.lastSyncStatus === "error"
                             ? "Update needs attention"
@@ -290,11 +290,12 @@ export default function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:shrink-0">
                       {HISTORY_ENABLED && (
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 min-w-0 basis-[calc(50%-0.25rem)] whitespace-normal px-2 text-xs sm:text-sm lg:basis-auto"
                           onClick={e => {
                             e.stopPropagation();
                             setLocation(`/leaderboard/${league.espnLeagueId}`);
@@ -307,6 +308,7 @@ export default function Dashboard() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 min-w-0 basis-[calc(50%-0.25rem)] whitespace-normal px-2 text-xs sm:text-sm lg:basis-auto"
                           onClick={e => {
                             e.stopPropagation();
                             setLocation(`/seasons/${league.espnLeagueId}`);
@@ -320,6 +322,8 @@ export default function Dashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="size-11"
+                            aria-label="Rename league"
                             onClick={e =>
                               handleRenameClick(e, {
                                 id: league.id,
@@ -333,6 +337,8 @@ export default function Dashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="size-11"
+                            aria-label="Delete league"
                             onClick={e =>
                               handleDelete(e, league.id, league.name)
                             }
@@ -342,7 +348,7 @@ export default function Dashboard() {
                           </Button>
                         </>
                       )}
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="min-h-11">
                         View League →
                       </Button>
                     </div>
@@ -434,7 +440,10 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle>Join your team league</DialogTitle>
             <DialogDescription>
-              Enter the invitation code shared by your league commissioner.
+              Use the app invitation code shared by your league commissioner,
+              not your ESPN league ID. If the league is already on your dashboard,
+              you are already a member—open that league instead.
+              Commissioners can open their league and tap Invite Members to copy the code.
             </DialogDescription>
           </DialogHeader>
           <Input
