@@ -680,62 +680,62 @@ export default function LeagueDetail() {
 
         {/* Tabs */}
         <Tabs defaultValue="standings" className="space-y-4">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="w-full sm:w-auto inline-flex min-w-max">
+          <div className="min-w-0">
+            <TabsList aria-label="League sections" className="grid h-auto w-full grid-cols-3 gap-1 lg:grid-cols-5 xl:grid-cols-9">
               <TabsTrigger
                 value="myweek"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 My Week
               </TabsTrigger>
               <TabsTrigger
                 value="standings"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Standings
               </TabsTrigger>
               <TabsTrigger
                 value="matchups"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Matchups
               </TabsTrigger>
               {HISTORY_ENABLED && (
                 <TabsTrigger
                   value="alltime"
-                  className="text-xs sm:text-sm px-3 sm:px-4"
+                  className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
                 >
                   All-Time Stats
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="available"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Available Players
               </TabsTrigger>
               <TabsTrigger
                 value="weather"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Game Weather
               </TabsTrigger>
               <TabsTrigger
                 value="newsletter"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Newsletter
               </TabsTrigger>
 
               <TabsTrigger
                 value="ai"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 AI Assistant
               </TabsTrigger>
               <TabsTrigger
                 value="activity"
-                className="text-xs sm:text-sm px-3 sm:px-4"
+                className="h-auto min-h-12 min-w-0 whitespace-normal px-2 py-2 text-xs leading-snug sm:text-sm"
               >
                 Activity
               </TabsTrigger>
@@ -1036,7 +1036,7 @@ export default function LeagueDetail() {
                             #
                           </TableHead>
                           <TableHead className="min-w-[140px] sm:min-w-0 text-xs sm:text-sm">
-                            Team
+                            Owner / Team
                           </TableHead>
                           <TableHead className="text-center text-xs sm:text-sm">
                             W
@@ -1085,15 +1085,13 @@ export default function LeagueDetail() {
                             </TableCell>
                             <TableCell className="min-w-[140px] sm:min-w-0">
                               <div>
-                                <div className="font-semibold text-card-foreground text-xs sm:text-sm line-clamp-1">
-                                  {team.name}
+                                <div className="font-semibold text-card-foreground text-xs sm:text-sm">
+                                  {team.ownerName?.trim() || team.name}
                                 </div>
-                                {/* Historical seasons store the person as the
-                                    team name, so showing both repeats it. */}
-                                {team.ownerName &&
-                                  team.ownerName !== team.name && (
-                                    <div className="text-xs text-muted-foreground line-clamp-1">
-                                      {team.ownerName}
+                                {team.ownerName?.trim() &&
+                                  team.ownerName.trim().toLowerCase() !== team.name.trim().toLowerCase() && (
+                                    <div className="max-w-[15rem] whitespace-normal break-words text-xs text-muted-foreground">
+                                      {team.name}
                                     </div>
                                   )}
                                 {!isQualified(team) && (
