@@ -34,7 +34,7 @@ export default function MyWeek({ leagueId, teamId }: Props) {
   if (!data.hasTeam)
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 sm:px-6">
           <CardTitle>Pick your team first</CardTitle>
         </CardHeader>
         <CardContent>
@@ -53,7 +53,7 @@ export default function MyWeek({ leagueId, teamId }: Props) {
     players.length ? (
       <div className="space-y-2">
         {players.map((p, i) => (
-          <div key={`${p.name}-${i}`} className="rounded-lg border p-3">
+          <div key={`${p.name}-${i}`} className="rounded-lg border p-3 text-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-medium">
                 {p.slotPosition} · {p.name}
@@ -64,7 +64,11 @@ export default function MyWeek({ leagueId, teamId }: Props) {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {p.nflTeam || "NFL team unavailable"} · {p.position} ·{" "}
-              {p.status || "Status unavailable"}
+              {!p.status
+                ? "Status unavailable"
+                : ["ACTIVE", "NORMAL"].includes(p.status)
+                  ? "Active"
+                  : p.status.toLowerCase()}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {p.game
@@ -78,9 +82,11 @@ export default function MyWeek({ leagueId, teamId }: Props) {
                   : [p.game.forecast, p.game.wind].filter(Boolean).join(" · ")}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {points(p.points)} recorded points
-            </p>
+            {p.points !== null && (
+              <p className="text-xs text-muted-foreground">
+                {points(p.points)} points scored
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -93,13 +99,13 @@ export default function MyWeek({ leagueId, teamId }: Props) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 sm:px-6">
           <CardTitle>
             Week {data.week} · {data.teamName} vs{" "}
             {data.opponentName || "Opponent pending"}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="px-4 sm:px-6 space-y-3">
           <div className="grid grid-cols-2 gap-4 text-center">
             {[
               {
@@ -144,12 +150,12 @@ export default function MyWeek({ leagueId, teamId }: Props) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 sm:px-6">
           <CardTitle className="text-base">
             Starting lineup comparison
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="px-4 sm:px-6 space-y-3">
           <p className="text-sm">
             {mine !== null && theirs !== null
               ? `${data.teamName}'s ${data.starters.length} selected starters project for ${mine.toFixed(1)} points; ${data.opponentName}'s ${data.opponentStarters.length} project for ${theirs.toFixed(1)}. The projected difference is ${Math.abs(mine - theirs).toFixed(1)} points${mine === theirs ? " (even)" : ` in favor of ${mine > theirs ? data.teamName : data.opponentName}`}.`
@@ -203,12 +209,12 @@ export default function MyWeek({ leagueId, teamId }: Props) {
       </Card>
       {data.alerts.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 sm:px-6">
             <CardTitle className="text-base">
               Lineup checks · {data.teamName}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-4 sm:px-6 space-y-2">
             {data.alerts.map((a, i) => (
               <p key={i} className="text-sm">
                 {a.message}
@@ -227,10 +233,10 @@ export default function MyWeek({ leagueId, teamId }: Props) {
           },
         ].map((t, i) => (
           <Card key={i}>
-            <CardHeader>
+            <CardHeader className="px-4 sm:px-6">
               <CardTitle className="text-base">{t.name} · starters</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="px-4 sm:px-6 space-y-4">
               {renderPlayers(t.starters)}
               <details>
                 <summary className="cursor-pointer text-sm font-medium">

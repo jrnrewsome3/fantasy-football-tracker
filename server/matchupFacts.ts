@@ -28,7 +28,7 @@ export function buildMatchupFacts(data: MyWeek) {
       )
       .join("\n");
   const playerLine = (p: MyWeekPlayer) =>
-    `${p.name} (${p.nflTeam ?? "team unavailable"}, ${p.slotPosition ?? p.position}) — ${p.projectedPoints?.toFixed(2) ?? "unavailable"} projected points; ${p.status || "status unavailable"}`;
+    `${p.name} (${p.nflTeam ?? "team unavailable"}, ${p.slotPosition ?? p.position}) — ${p.projectedPoints?.toFixed(2) ?? "unavailable"} projected points; ${!p.status ? "status unavailable" : ["ACTIVE", "NORMAL"].includes(p.status) ? "active" : p.status.toLowerCase()}`;
   facts.lineup =
     `**${name}'s selected starters**\n` +
     (data.starters.map(p => `- ${playerLine(p)}`).join("\n") ||
