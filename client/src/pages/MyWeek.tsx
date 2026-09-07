@@ -1,213 +1,247 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CalendarClock, Info, Wind } from "lucide-react";
+import AIQueryBox from "@/components/AIQueryBox";
+import { compareLineups, projectedTotal } from "@shared/lineupComparison";
 
 interface Props {
   leagueId: number;
+  teamId?: number;
 }
+const points = (n: number | null) =>
+  n === null ? "Unavailable" : n.toFixed(1);
+const timestamp = (s: Date | string | null) =>
+  s ? new Date(s).toLocaleString() : "Not synced";
 
-const kickoffLabel = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-/** Everything a manager needs before lineups lock, on one screen. */
-export default function MyWeek({ leagueId }: Props) {
-  const { data, isLoading } = trpc.league.myWeek.useQuery(
-    { leagueId },
-    { enabled: leagueId > 0, staleTime: 5 * 60 * 1000 }
+export default function MyWeek({ leagueId, teamId }: Props) {
+  const { data, isLoading, error, refetch } = trpc.league.myWeek.useQuery(
+    { leagueId, teamId },
+    { enabled: leagueId > 0, staleTime: 60_000, refetchInterval: 60_000 }
   );
-
+  const [showAI, setShowAI] = useState(false);
   if (isLoading) return <Skeleton className="h-96 w-full" />;
-  if (!data) return null;
-
-  if (!data.hasTeam) {
+  if (error || !data)
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <p>Unable to load this matchup.</p>
+          <Button onClick={() => refetch()}>Try again</Button>
+        </CardContent>
+      </Card>
+    );
+  if (!data.hasTeam)
     return (
       <Card>
         <CardHeader>
           <CardTitle>Pick your team first</CardTitle>
-          <CardDescription>
-            Choose which team is yours and this becomes your week-by-week
-            command centre — your matchup, your starters, kickoff times, and
-            anything that needs attention before lineups lock.
-          </CardDescription>
         </CardHeader>
+        <CardContent>
+          Choose your team in the league dashboard to see your lineup and
+          opponent.
+        </CardContent>
       </Card>
     );
-  }
-
-  const showScore = data.myScore !== null && data.isComplete;
-
+  const mine = projectedTotal(data.starters);
+  const theirs = projectedTotal(data.opponentStarters);
+  const rows = compareLineups(data.starters, data.opponentStarters);
+  const stale = [data.rosterSyncedAt, data.opponentRosterSyncedAt].some(
+    d => d && Date.now() - new Date(d).getTime() > 2 * 60 * 60 * 1000
+  );
+  const renderPlayers = (players: typeof data.starters) =>
+    players.length ? (
+      <div className="space-y-2">
+        {players.map((p, i) => (
+          <div key={`${p.name}-${i}`} className="rounded-lg border p-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-medium">
+                {p.slotPosition} · {p.name}
+              </span>
+              <span className="text-sm">
+                {points(p.projectedPoints)} projected
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {p.nflTeam || "NFL team unavailable"} · {p.position} ·{" "}
+              {p.status || "Status unavailable"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {p.game
+                ? `${p.game.matchup} · ${new Date(p.game.kickoff).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}`
+                : "NFL game information unavailable"}
+            </p>
+            {p.game && (
+              <p className="text-xs text-muted-foreground">
+                {p.game.indoor
+                  ? "Indoor"
+                  : [p.game.forecast, p.game.wind].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {points(p.points)} recorded points
+            </p>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-muted-foreground">
+        No players synced for this group in Week {data.week}. Check the lineup
+        and league sync in ESPN.
+      </p>
+    );
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-primary" />
-            Week {data.week}
-            {data.opponentName ? ` · vs ${data.opponentName}` : ""}
+          <CardTitle>
+            Week {data.week} · {data.teamName} vs{" "}
+            {data.opponentName || "Opponent pending"}
           </CardTitle>
-          {data.series && data.series.meetings > 0 && (
-            <CardDescription>
-              {data.series.leader === "even"
-                ? `You are tied ${data.series.homeWins}–${data.series.awayWins} all-time`
-                : data.series.leader === "home"
-                  ? `You lead this series ${data.series.homeWins}–${data.series.awayWins}`
-                  : `You trail this series ${data.series.homeWins}–${data.series.awayWins}`}
-              {data.series.streak && data.series.streak.count > 1
-                ? data.series.streak.key === "home"
-                  ? ` · you have won ${data.series.streak.count} straight`
-                  : ` · you have lost ${data.series.streak.count} straight`
-                : ""}
-            </CardDescription>
-          )}
         </CardHeader>
-        <CardContent>
-          {data.opponentName ? (
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {data.teamName || "You"}
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-4 text-center">
+            {[
+              {
+                name: data.teamName,
+                score: data.myScore,
+                projection: data.myProjected,
+              },
+              {
+                name: data.opponentName,
+                score: data.opponentScore,
+                projection: data.opponentProjected,
+              },
+            ].map((t, i) => (
+              <div key={i}>
+                <p className="text-sm">{t.name || "Pending"}</p>
+                <p className="text-3xl font-bold">
+                  {points(data.isComplete ? t.score : t.projection)}
                 </p>
-                <p className="text-3xl font-bold text-card-foreground tabular-nums">
-                  {showScore
-                    ? data.myScore?.toFixed(1)
-                    : data.myProjected
-                      ? data.myProjected.toFixed(1)
-                      : "—"}
-                </p>
                 <p className="text-xs text-muted-foreground">
-                  {showScore ? "final" : "projected"}
+                  {data.isComplete ? "Final" : "ESPN team projection"}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {data.opponentName}
-                </p>
-                <p className="text-3xl font-bold text-card-foreground tabular-nums">
-                  {showScore
-                    ? data.opponentScore?.toFixed(1)
-                    : data.opponentProjected
-                      ? data.opponentProjected.toFixed(1)
-                      : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {showScore ? "final" : "projected"}
-                </p>
-              </div>
-            </div>
-          ) : (
+            ))}
+          </div>
+          {data.series && (
             <p className="text-sm text-muted-foreground">
-              No matchup scheduled for this week yet.
+              All-time series: {data.series.homeWins}–{data.series.awayWins}{" "}
+              from {data.teamName}'s side.
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Lineups from ESPN · {data.teamName}:{" "}
+            {timestamp(data.rosterSyncedAt)} · {data.opponentName || "Opponent"}
+            : {timestamp(data.opponentRosterSyncedAt)}
+          </p>
+          {stale && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              A lineup snapshot is over two hours old. Check ESPN before making
+              a lineup decision.
             </p>
           )}
         </CardContent>
       </Card>
-
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Starting lineup comparison
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm">
+            {mine !== null && theirs !== null
+              ? `${data.teamName}'s ${data.starters.length} selected starters project for ${mine.toFixed(1)} points; ${data.opponentName}'s ${data.opponentStarters.length} project for ${theirs.toFixed(1)}. The projected difference is ${Math.abs(mine - theirs).toFixed(1)} points${mine === theirs ? " (even)" : ` in favor of ${mine > theirs ? data.teamName : data.opponentName}`}.`
+              : "Both starting lineups and their player projections are needed for a full comparison."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Totals include synced selected starters only. An empty lineup slot
+            may be absent. Player totals can differ from ESPN's live team
+            projection. Projections are estimates, not win probabilities.
+          </p>
+          {rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <caption className="sr-only">
+                  Projected points by starting lineup slot
+                </caption>
+                <thead>
+                  <tr>
+                    <th className="p-2 text-left">Slot</th>
+                    <th className="p-2 text-right">{data.teamName}</th>
+                    <th className="p-2 text-right">{data.opponentName}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={row.slot} className="border-t">
+                      <th className="p-2 text-left">{row.slot}</th>
+                      <td className="p-2 text-right">{points(row.mine)}</td>
+                      <td className="p-2 text-right">{points(row.opponent)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => setShowAI(!showAI)}
+            aria-expanded={showAI}
+          >
+            {showAI ? "Hide questions" : "Ask AI about this matchup"}
+          </Button>
+          {showAI && (
+            <AIQueryBox
+              key={`${data.teamName}-${data.week}`}
+              leagueId={leagueId}
+              initialQuestion={`Compare ${data.teamName} vs ${data.opponentName} in Week ${data.week}. Explain the selected starters, projected strengths by slot, injury concerns, and bench options using the synced data.`}
+            />
+          )}
+        </CardContent>
+      </Card>
       {data.alerts.length > 0 && (
-        <Card className="border-amber-500/40 bg-amber-500/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Before you lock
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Lineup checks · {data.teamName}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {data.alerts.map((alert, index) => (
-              <div key={index} className="flex items-start gap-2 text-sm">
-                {alert.level === "warning" ? (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
-                ) : (
-                  <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                )}
-                <span
-                  className={
-                    alert.level === "warning"
-                      ? "text-card-foreground"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {alert.message}
-                </span>
-              </div>
+            {data.alerts.map((a, i) => (
+              <p key={i} className="text-sm">
+                {a.message}
+              </p>
             ))}
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your starters</CardTitle>
-          <CardDescription>
-            Kickoff time and conditions for every player you are starting.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!data.hasRoster ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Rosters appear once the season starts and the first games sync.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {data.starters.map(player => (
-                <div
-                  key={player.name}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
-                        {player.slotPosition || player.position || "—"}
-                      </span>
-                      <span className="font-medium text-card-foreground">
-                        {player.name}
-                      </span>
-                      {player.status && player.status !== "ACTIVE" && (
-                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
-                          {player.status.replace(/_/g, " ")}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {player.nflTeam || "FA"}
-                      {player.game ? ` · ${player.game.matchup}` : " · bye week"}
-                      {player.game
-                        ? ` · ${kickoffLabel(player.game.kickoff)}`
-                        : ""}
-                    </p>
-                  </div>
-                  {player.game && (
-                    <div className="text-right text-xs text-muted-foreground">
-                      <div>
-                        {player.game.indoor
-                          ? "Indoor"
-                          : player.game.temperature !== null
-                            ? `${player.game.temperature}°F`
-                            : player.game.forecast}
-                      </div>
-                      {player.game.wind && !player.game.indoor && (
-                        <div className="flex items-center justify-end gap-1">
-                          <Wind className="h-3 w-3" />
-                          {player.game.wind}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[
+          { name: data.teamName, starters: data.starters, bench: data.bench },
+          {
+            name: data.opponentName || "Opponent",
+            starters: data.opponentStarters,
+            bench: data.opponentBench,
+          },
+        ].map((t, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <CardTitle className="text-base">{t.name} · starters</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {renderPlayers(t.starters)}
+              <details>
+                <summary className="cursor-pointer text-sm font-medium">
+                  Bench / reserve ({t.bench.length})
+                </summary>
+                <div className="mt-3">{renderPlayers(t.bench)}</div>
+              </details>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

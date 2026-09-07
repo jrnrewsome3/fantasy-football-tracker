@@ -395,7 +395,11 @@ export const appRouter = router({
         const { requireLeagueAccess } = await import("./leagueAccess");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const { answerLeagueQuestion } = await import("./aiQuery");
-        return await answerLeagueQuestion(input.leagueId, input.question);
+        return await answerLeagueQuestion(
+          input.leagueId,
+          input.question,
+          ctx.user.id
+        );
       }),
 
     // Export league stats as markdown (for PDF conversion)
@@ -489,12 +493,17 @@ export const appRouter = router({
 
     // Everything one manager needs before lineups lock, in one payload
     myWeek: protectedProcedure
-      .input(z.object({ leagueId: z.number() }))
+      .input(
+        z.object({
+          leagueId: z.number(),
+          teamId: z.number().int().positive().optional(),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const { requireLeagueAccess } = await import("./leagueAccess");
         await requireLeagueAccess(input.leagueId, ctx.user.id);
         const { getMyWeek } = await import("./myWeek");
-        return getMyWeek(input.leagueId, ctx.user.id);
+        return getMyWeek(input.leagueId, ctx.user.id, input.teamId);
       }),
 
     // All-play records: how much of a record was schedule rather than scoring

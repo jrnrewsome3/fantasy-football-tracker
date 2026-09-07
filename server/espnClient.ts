@@ -3,6 +3,7 @@
  * Wrapper around espn-fantasy-football-api library for Node.js
  */
 
+import { mapRawBoxScores } from "./playerMapping";
 // @ts-ignore - ESPN library doesn't have TypeScript definitions
 import pkg from "espn-fantasy-football-api/node-dev.js";
 const { Client } = pkg;
@@ -46,8 +47,8 @@ export interface ESPNBoxScore {
   awayTeamId: number;
   homeScore: number;
   awayScore: number;
-  homeProjectedScore: number;
-  awayProjectedScore: number;
+  homeProjectedScore: number | null;
+  awayProjectedScore: number | null;
   homeRoster: ESPNBoxPlayer[];
   awayRoster: ESPNBoxPlayer[];
 }
@@ -55,8 +56,8 @@ export interface ESPNBoxScore {
 export interface ESPNBoxPlayer {
   player: ESPNPlayer;
   position: string;
-  totalPoints: number;
-  projectedPoints: number;
+  totalPoints: number | null;
+  projectedPoints: number | null;
 }
 
 export interface ESPNActivity {
@@ -148,50 +149,18 @@ export async function fetchBoxScores(
   scoringPeriodId: number
 ): Promise<ESPNBoxScore[]> {
   try {
-    const boxscores = await client.getBoxscoreForWeek({
+    const response = await fetch(
+      `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${seasonId}/segments/0/leagues/${Number(client.leagueId)}?scoringPeriodId=${scoringPeriodId}&view=mMatchup&view=mMatchupScore`,
+      { signal: AbortSignal.timeout(20_000) }
+    );
+    if (!response.ok)
+      throw new Error(`ESPN boxscores returned HTTP ${response.status}`);
+    return mapRawBoxScores(
+      await response.json(),
       seasonId,
       matchupPeriodId,
-      scoringPeriodId,
-    });
-
-    return boxscores.map((box: any) => ({
-      homeTeamId: box.homeTeamId,
-      awayTeamId: box.awayTeamId,
-      homeScore: Math.round(box.homeScore || 0),
-      awayScore: Math.round(box.awayScore || 0),
-      homeProjectedScore: Math.round(box.homeProjectedScore || 0),
-      awayProjectedScore: Math.round(box.awayProjectedScore || 0),
-      homeRoster:
-        box.homeRoster?.map((p: any) => ({
-          player: {
-            id: p.player?.id,
-            firstName: p.player?.firstName,
-            lastName: p.player?.lastName,
-            fullName: p.player?.fullName,
-            position: p.player?.position,
-            proTeam: p.player?.proTeam,
-            injuryStatus: p.player?.injuryStatus,
-          },
-          position: p.position,
-          totalPoints: Math.round(p.totalPoints || 0),
-          projectedPoints: Math.round(p.projectedPoints || 0),
-        })) || [],
-      awayRoster:
-        box.awayRoster?.map((p: any) => ({
-          player: {
-            id: p.player?.id,
-            firstName: p.player?.firstName,
-            lastName: p.player?.lastName,
-            fullName: p.player?.fullName,
-            position: p.player?.position,
-            proTeam: p.player?.proTeam,
-            injuryStatus: p.player?.injuryStatus,
-          },
-          position: p.position,
-          totalPoints: Math.round(p.totalPoints || 0),
-          projectedPoints: Math.round(p.projectedPoints || 0),
-        })) || [],
-    }));
+      scoringPeriodId
+    );
   } catch (error) {
     console.error("[ESPN Client] Error fetching boxscores:", error);
     throw new Error("Failed to fetch boxscores from ESPN");

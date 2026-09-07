@@ -2,7 +2,7 @@
  * Database operations for leagues, teams, players, and stats
  */
 
-import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql, inArray } from "drizzle-orm";
 import {
   leagues,
   League,
@@ -511,12 +511,7 @@ export async function replaceAvailablePlayers(
   }
 }
 
-/**
- * The players on one fantasy team for a week, newest week that actually has
- * roster data. Rosters arrive with boxscores, so the requested week can be
- * empty before kickoff — falling back keeps the view useful in the preseason
- * and on a Tuesday rather than showing nothing.
- */
+/** Exact-week rosters only. Never present an earlier lineup as this week's. */
 export async function getRosterForTeamWeek(
   leagueId: number,
   seasonYear: number,
@@ -531,6 +526,9 @@ export async function getRosterForTeamWeek(
     slotPosition: string | null;
     wasStarted: boolean;
     week: number;
+    points: number | null;
+    projectedPoints: number | null;
+    syncedAt: Date;
   }>
 > {
   const db = await getDb();
@@ -544,20 +542,14 @@ export async function getRosterForTeamWeek(
       and(
         eq(playerStats.leagueId, leagueId),
         eq(playerStats.seasonYear, seasonYear),
-        eq(playerStats.teamId, espnTeamId)
+        eq(playerStats.teamId, espnTeamId),
+        eq(playerStats.week, week)
       )
     );
 
   if (!rows.length) return [];
 
-  // Prefer the requested week; otherwise the latest week we have.
-  const weeksAvailable = rows.map(r => r.stat.week);
-  const targetWeek = weeksAvailable.includes(week)
-    ? week
-    : Math.max(...weeksAvailable);
-
   return rows
-    .filter(r => r.stat.week === targetWeek)
     .map(r => ({
       name: r.player.name,
       position: r.player.position,
@@ -566,9 +558,13 @@ export async function getRosterForTeamWeek(
       slotPosition: r.stat.slotPosition,
       wasStarted: r.stat.wasStarted === 1,
       week: r.stat.week,
+      points: r.stat.points,
+      projectedPoints: r.stat.projectedPoints,
+      syncedAt: r.stat.createdAt,
     }))
     .sort(
-      (a, b) => Number(b.wasStarted) - Number(a.wasStarted) ||
+      (a, b) =>
+        Number(b.wasStarted) - Number(a.wasStarted) ||
         (a.slotPosition || "").localeCompare(b.slotPosition || "")
     );
 }
@@ -668,9 +664,7 @@ export async function pruneWeekMatchups(
       )
     );
 
-  const wanted = new Set(
-    keep.map(k => `${k.homeTeamId}:${k.awayTeamId}`)
-  );
+  const wanted = new Set(keep.map(k => `${k.homeTeamId}:${k.awayTeamId}`));
   const stale = existing.filter(
     row => !wanted.has(`${row.homeTeamId}:${row.awayTeamId}`)
   );
@@ -1022,7 +1016,8 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     // Current participation is a season-scoped franchise mapping, not an app login.
     // Include current teams even before their first game has been played.
     const currentFranchises = new Set(
-      allTeams.filter(row => row.teams.seasonYear === row.leagues.seasonYear)
+      allTeams
+        .filter(row => row.teams.seasonYear === row.leagues.seasonYear)
         .map(row => row.teams.franchiseKey || row.teams.ownerName)
         .filter(Boolean)
     );
@@ -1109,24 +1104,27 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     }
 
     // Convert to array and calculate win percentages
-    const leaderboard = Array.from(ownerStatsMap.entries()).map(([franchiseKey, owner]) => {
-      const totalGames = owner.totalWins + owner.totalLosses + owner.totalTies;
-      const winPercentage =
-        totalGames > 0 ? (owner.totalWins / totalGames) * 100 : 0;
-      const avgPointsPerSeason =
-        owner.seasonsPlayed > 0
-          ? owner.totalPointsFor / owner.seasonsPlayed
-          : 0;
+    const leaderboard = Array.from(ownerStatsMap.entries()).map(
+      ([franchiseKey, owner]) => {
+        const totalGames =
+          owner.totalWins + owner.totalLosses + owner.totalTies;
+        const winPercentage =
+          totalGames > 0 ? (owner.totalWins / totalGames) * 100 : 0;
+        const avgPointsPerSeason =
+          owner.seasonsPlayed > 0
+            ? owner.totalPointsFor / owner.seasonsPlayed
+            : 0;
 
-      return {
-        ...owner,
-        franchiseKey,
-        isCurrentOwner: currentFranchises.has(franchiseKey),
-        winPercentage,
-        avgPointsPerSeason,
-        totalGames,
-      };
-    });
+        return {
+          ...owner,
+          franchiseKey,
+          isCurrentOwner: currentFranchises.has(franchiseKey),
+          winPercentage,
+          avgPointsPerSeason,
+          totalGames,
+        };
+      }
+    );
 
     // Sort by total wins descending
     return leaderboard.sort((a, b) => b.totalWins - a.totalWins);
@@ -1134,4 +1132,46 @@ export async function getOwnerLeaderboard(espnLeagueId: string) {
     console.error("[LeagueDB] Error getting owner leaderboard:", error);
     return [];
   }
+}
+
+/** Replace one complete weekly roster snapshot atomically, removing dropped players. */
+export async function replaceWeekPlayerStats(
+  leagueId: number,
+  seasonYear: number,
+  week: number,
+  rows: InsertPlayerStat[]
+): Promise<void> {
+  if (!rows.length)
+    throw new Error("No roster data received; previous roster preserved");
+  const teamIds = Array.from(
+    new Set(
+      rows
+        .map(r => r.teamId)
+        .filter((id): id is number => typeof id === "number")
+    )
+  );
+  if (!teamIds.length) throw new Error("No roster team IDs supplied");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    await tx
+      .delete(playerStats)
+      .where(
+        and(
+          eq(playerStats.leagueId, leagueId),
+          eq(playerStats.seasonYear, seasonYear),
+          eq(playerStats.week, week),
+          inArray(playerStats.teamId, teamIds)
+        )
+      );
+    await tx.insert(playerStats).values(
+      rows.map(row => ({
+        ...row,
+        leagueId,
+        seasonYear,
+        week,
+        createdAt: new Date(),
+      }))
+    );
+  });
 }
