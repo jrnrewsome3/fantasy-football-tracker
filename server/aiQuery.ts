@@ -1,3 +1,4 @@
+import { isLineupQuestion, answerMatchupQuestion } from "./matchupFacts";
 import { compareLineups, projectedTotal } from "../shared/lineupComparison";
 import { getNFLWeekOutlook } from "./weather";
 import { getMyWeek } from "./myWeek";
@@ -55,6 +56,28 @@ export async function answerLeagueQuestion(
       return {
         success: false,
         answer: "League not found",
+      };
+    }
+
+    if (isLineupQuestion(question)) {
+      const seasonTeams = await getTeamsByLeague(leagueId);
+      const named = /\bmy\b/i.test(question)
+        ? undefined
+        : seasonTeams
+            .filter(
+              t =>
+                t.seasonYear === league[0].seasonYear &&
+                question.toLowerCase().includes(t.name.trim().toLowerCase())
+            )
+            .sort(
+              (a, b) =>
+                question.toLowerCase().indexOf(a.name.trim().toLowerCase()) -
+                question.toLowerCase().indexOf(b.name.trim().toLowerCase())
+            )[0];
+      const matchup = await getMyWeek(leagueId, userId, named?.espnTeamId);
+      return {
+        success: true,
+        answer: await answerMatchupQuestion(matchup, question),
       };
     }
 

@@ -65,7 +65,7 @@ beforeEach(() => {
 });
 it("supplies personal identity, both lineups, bench and computed starter-only margin to the model", async () => {
   expect(
-    (await answerLeagueQuestion(1, "How does my lineup look?", 77)).answer
+    (await answerLeagueQuestion(1, "Summarize this league", 77)).answer
   ).toBe("Lineup answer");
   expect(m.myWeek).toHaveBeenCalledWith(1, 77);
   const prompt = m.llm.mock.calls[0][0].messages[0].content;
