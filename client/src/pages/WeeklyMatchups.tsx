@@ -1,3 +1,4 @@
+import MyWeek from "./MyWeek";
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export default function WeeklyMatchups({
   seasonYear,
   leagueCurrentSeasonYear,
 }: WeeklyMatchupsProps) {
+  const [expandedMatchup, setExpandedMatchup] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const [selectedSeason, setSelectedSeason] = useState(seasonYear);
 
@@ -278,7 +280,8 @@ export default function WeeklyMatchups({
                           )}
                         {matchup.series.lastMeeting && (
                           <span>
-                            {" · "}last met {matchup.series.lastMeeting.seasonYear}
+                            {" · "}last met{" "}
+                            {matchup.series.lastMeeting.seasonYear}
                             {matchup.series.lastMeeting.isPlayoffs
                               ? " playoffs"
                               : ` week ${matchup.series.lastMeeting.week}`}
@@ -290,6 +293,30 @@ export default function WeeklyMatchups({
                       </div>
                     )}
                   </div>
+                  {selectedSeason === leagueCurrentSeasonYear &&
+                    selectedWeek === currentWeek && (
+                      <div className="border-t p-3">
+                        <Button
+                          variant="outline"
+                          aria-expanded={expandedMatchup === matchup.id}
+                          onClick={() =>
+                            setExpandedMatchup(
+                              expandedMatchup === matchup.id ? null : matchup.id
+                            )
+                          }
+                        >
+                          Compare starting lineups
+                        </Button>
+                        {expandedMatchup === matchup.id && (
+                          <div className="mt-4">
+                            <MyWeek
+                              leagueId={leagueId}
+                              teamId={matchup.homeTeamId}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </CardContent>
               </Card>
             );

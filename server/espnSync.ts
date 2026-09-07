@@ -1,3 +1,5 @@
+import type { InsertPlayerStat } from "../drizzle/schema";
+import { isStartingSlot } from "./playerMapping";
 /**
  * ESPN Data Sync Service
  * Handles syncing data from ESPN API to database
@@ -17,7 +19,7 @@ import {
   upsertTeam,
   upsertPlayer,
   upsertMatchup,
-  insertPlayerStat,
+  replaceWeekPlayerStats,
   insertTransaction,
   getLeagueByEspnId,
   replaceAvailablePlayers,
@@ -255,6 +257,7 @@ export async function syncWeekMatchups(
     const boxscores = await fetchBoxScores(client, seasonYear, week, week);
     let matchupsSynced = 0;
     let playersSynced = 0;
+    const rosterStats: InsertPlayerStat[] = [];
 
     // A matchup is complete when its week is behind ESPN's active scoring
     // period (or the whole season is archived) — a nonzero score only means
@@ -263,6 +266,14 @@ export async function syncWeekMatchups(
     const isPastWeek = week < Math.max(1, league.currentWeek || 1);
 
     for (const box of boxscores) {
+      if (
+        (box.homeTeamId > 0 && !box.homeRoster.length) ||
+        (box.awayTeamId > 0 && !box.awayRoster.length)
+      ) {
+        throw new Error(
+          "ESPN returned an incomplete roster snapshot; previous roster preserved"
+        );
+      }
       // Upsert matchup
       await upsertMatchup({
         leagueId: league.id,
@@ -292,8 +303,9 @@ export async function syncWeekMatchups(
           });
 
           // Insert player stat
+          if (!player) throw new Error("Player could not be saved");
           if (player) {
-            await insertPlayerStat({
+            rosterStats.push({
               playerId: player.id,
               leagueId: league.id,
               teamId: box.homeTeamId,
@@ -301,7 +313,7 @@ export async function syncWeekMatchups(
               seasonYear,
               points: rosterPlayer.totalPoints,
               projectedPoints: rosterPlayer.projectedPoints,
-              wasStarted: rosterPlayer.position !== "Bench" ? 1 : 0,
+              wasStarted: isStartingSlot(rosterPlayer.position) ? 1 : 0,
               slotPosition: rosterPlayer.position,
             });
             playersSynced++;
@@ -320,8 +332,9 @@ export async function syncWeekMatchups(
             status: rosterPlayer.player.injuryStatus,
           });
 
+          if (!player) throw new Error("Player could not be saved");
           if (player) {
-            await insertPlayerStat({
+            rosterStats.push({
               playerId: player.id,
               leagueId: league.id,
               teamId: box.awayTeamId,
@@ -329,7 +342,7 @@ export async function syncWeekMatchups(
               seasonYear,
               points: rosterPlayer.totalPoints,
               projectedPoints: rosterPlayer.projectedPoints,
-              wasStarted: rosterPlayer.position !== "Bench" ? 1 : 0,
+              wasStarted: isStartingSlot(rosterPlayer.position) ? 1 : 0,
               slotPosition: rosterPlayer.position,
             });
             playersSynced++;
@@ -337,6 +350,8 @@ export async function syncWeekMatchups(
         }
       }
     }
+
+    await replaceWeekPlayerStats(league.id, seasonYear, week, rosterStats);
 
     // Drop pairings ESPN no longer lists for this week. Only for the current
     // season — archived seasons come from reconciled league records.
@@ -459,6 +474,7 @@ export async function fullLeagueSync(
 
     let totalMatchups = 0;
     let totalPlayers = 0;
+    const errors: string[] = [];
 
     // Sync all weeks up to current week
     for (let week = 1; week <= effectiveWeek; week++) {
@@ -469,6 +485,8 @@ export async function fullLeagueSync(
         espnS2,
         swid
       );
+      if (!weekResult.success)
+        errors.push(`Week ${week}: ${weekResult.message}`);
       if (weekResult.success) {
         totalMatchups += weekResult.matchupsSynced || 0;
         totalPlayers += weekResult.playersSynced || 0;
@@ -477,11 +495,18 @@ export async function fullLeagueSync(
 
     // Sync activity
     await syncLeagueActivity(espnLeagueId, seasonYear, espnS2, swid);
-    await syncAvailablePlayers(espnLeagueId, seasonYear, effectiveWeek);
+    const available = await syncAvailablePlayers(
+      espnLeagueId,
+      seasonYear,
+      effectiveWeek
+    );
+    if (!available.success) errors.push(available.message);
 
     return {
-      success: true,
-      message: `Full sync completed successfully`,
+      success: errors.length === 0,
+      message: errors.length
+        ? errors.join("; ")
+        : "Full sync completed successfully",
       teamsSynced: leagueResult.teamsSynced,
       matchupsSynced: totalMatchups,
       playersSynced: totalPlayers,

@@ -24,6 +24,8 @@ export interface MyWeekPlayer {
   nflTeam: string | null;
   status: string | null;
   started: boolean;
+  points: number | null;
+  projectedPoints: number | null;
   game: {
     matchup: string;
     kickoff: string;
@@ -32,6 +34,9 @@ export interface MyWeekPlayer {
     temperature: number | null;
     wind: string | null;
     precipitationChance: number | null;
+    forecastSource: string | null;
+    forecastValidAt: string | null;
+    fetchedAt: string;
   } | null;
 }
 
@@ -56,6 +61,10 @@ export interface MyWeek {
   starters: MyWeekPlayer[];
   bench: MyWeekPlayer[];
   alerts: MyWeekAlert[];
+  opponentStarters: MyWeekPlayer[];
+  opponentBench: MyWeekPlayer[];
+  rosterSyncedAt: Date | null;
+  opponentRosterSyncedAt: Date | null;
 }
 
 /** Injury tags that should stop a manager before lineups lock. */
@@ -66,8 +75,10 @@ function attachGame(
   games: GameOutlook[]
 ): MyWeekPlayer["game"] {
   if (!nflTeam) return null;
-  const game = games.find(
-    g => g.homeTeam === nflTeam || g.awayTeam === nflTeam
+  const game = games.find(g =>
+    [g.homeTeam, g.awayTeam]
+      .map(t => (t === "WAS" ? "WSH" : t === "JAC" ? "JAX" : t))
+      .includes(nflTeam === "WAS" ? "WSH" : nflTeam)
   );
   if (!game) return null;
   return {
@@ -78,6 +89,9 @@ function attachGame(
     temperature: game.temperature,
     wind: game.wind,
     precipitationChance: game.precipitationChance,
+    forecastSource: game.forecastSource,
+    forecastValidAt: game.forecastValidAt,
+    fetchedAt: game.fetchedAt,
   };
 }
 
@@ -91,7 +105,8 @@ function windSpeed(wind: string | null): number {
 
 export async function getMyWeek(
   leagueId: number,
-  userId: number
+  userId: number,
+  selectedTeamId?: number
 ): Promise<MyWeek> {
   const league = await getLeagueById(leagueId);
   if (!league) throw new Error("League not found");
@@ -100,10 +115,11 @@ export async function getMyWeek(
   const seasonYear = league.seasonYear;
 
   const membership = await getLeagueMembership(leagueId, userId);
+  const requestedTeamId = selectedTeamId ?? membership?.espnTeamId;
   const base: MyWeek = {
     week,
     seasonYear,
-    hasTeam: Boolean(membership?.espnTeamId),
+    hasTeam: Boolean(requestedTeamId),
     hasRoster: false,
     teamName: null,
     opponentName: null,
@@ -116,15 +132,20 @@ export async function getMyWeek(
     starters: [],
     bench: [],
     alerts: [],
+    opponentStarters: [],
+    opponentBench: [],
+    rosterSyncedAt: null,
+    opponentRosterSyncedAt: null,
   };
 
-  if (!membership?.espnTeamId) return base;
-  const myTeamId = membership.espnTeamId;
+  if (!requestedTeamId) return base;
+  const myTeamId = requestedTeamId;
 
   const seasonTeams = await getTeamsByLeagueAndSeason(leagueId, seasonYear);
   const nameOf = (espnTeamId: number) =>
-    seasonTeams.find(t => t.espnTeamId === espnTeamId)?.name ?? null;
+    seasonTeams.find(t => t.espnTeamId === espnTeamId)?.name.trim() ?? null;
   base.teamName = nameOf(myTeamId);
+  if (!base.teamName) throw new Error("Team is not in this league season");
 
   // This week's matchup, from my side.
   const weekMatchups = await getMatchupsByWeek(leagueId, week, seasonYear);
@@ -137,7 +158,8 @@ export async function getMyWeek(
     base.opponentName = nameOf(iAmHome ? mine.awayTeamId : mine.homeTeamId);
     base.myScore = (iAmHome ? mine.homeScore : mine.awayScore) ?? null;
     base.opponentScore = (iAmHome ? mine.awayScore : mine.homeScore) ?? null;
-    base.myProjected = (iAmHome ? mine.homeProjected : mine.awayProjected) ?? null;
+    base.myProjected =
+      (iAmHome ? mine.homeProjected : mine.awayProjected) ?? null;
     base.opponentProjected =
       (iAmHome ? mine.awayProjected : mine.homeProjected) ?? null;
     base.isComplete = mine.isComplete === 1;
@@ -191,7 +213,16 @@ export async function getMyWeek(
     myTeamId
   );
   base.hasRoster = roster.length > 0;
-  if (!roster.length) return base;
+  const opponentTeamId = mine
+    ? mine.homeTeamId === myTeamId
+      ? mine.awayTeamId
+      : mine.homeTeamId
+    : null;
+  const opponentRoster = opponentTeamId
+    ? await getRosterForTeamWeek(leagueId, seasonYear, week, opponentTeamId)
+    : [];
+  base.rosterSyncedAt = roster[0]?.syncedAt ?? null;
+  base.opponentRosterSyncedAt = opponentRoster[0]?.syncedAt ?? null;
 
   let games: GameOutlook[] = [];
   try {
@@ -207,11 +238,16 @@ export async function getMyWeek(
     nflTeam: p.nflTeam,
     status: p.status,
     started: p.wasStarted,
+    points: p.points,
+    projectedPoints: p.projectedPoints,
     game: attachGame(p.nflTeam, games),
   });
 
   base.starters = roster.filter(p => p.wasStarted).map(enrich);
   base.bench = roster.filter(p => !p.wasStarted).map(enrich);
+
+  base.opponentStarters = opponentRoster.filter(p => p.wasStarted).map(enrich);
+  base.opponentBench = opponentRoster.filter(p => !p.wasStarted).map(enrich);
 
   // Anything worth acting on before lineups lock.
   for (const player of base.starters) {
@@ -230,7 +266,7 @@ export async function getMyWeek(
     if (!player.game && player.nflTeam) {
       base.alerts.push({
         level: "warning",
-        message: `${player.name} has no game this week. ${player.nflTeam} is on bye.`,
+        message: `${player.name}: NFL game information is unavailable. Confirm the schedule in ESPN.`,
       });
     }
 

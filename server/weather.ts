@@ -47,6 +47,9 @@ export type GameOutlook = {
   temperature: number | null;
   wind: string | null;
   precipitationChance: number | null;
+  forecastSource: string | null;
+  forecastValidAt: string | null;
+  fetchedAt: string;
 };
 
 let cache: { key: string; expiresAt: number; value: GameOutlook[] } | null =
@@ -59,23 +62,26 @@ async function fetchNwsForecast(coords: Coordinates, kickoff: Date) {
   };
   const points = await fetch(
     `https://api.weather.gov/points/${coords.lat},${coords.lon}`,
-    { headers }
+    { headers, signal: AbortSignal.timeout(5_000) }
   );
   if (!points.ok) return null;
   const pointData = (await points.json()) as any;
   const hourlyUrl = pointData?.properties?.forecastHourly;
   if (!hourlyUrl) return null;
-  const hourly = await fetch(hourlyUrl, { headers });
+  const hourly = await fetch(hourlyUrl, {
+    headers,
+    signal: AbortSignal.timeout(5_000),
+  });
   if (!hourly.ok) return null;
   const hourlyData = (await hourly.json()) as any;
   const periods = hourlyData?.properties?.periods ?? [];
   if (!periods.length) return null;
-  const closest = periods.reduce((best: any, period: any) =>
-    Math.abs(new Date(period.startTime).getTime() - kickoff.getTime()) <
-    Math.abs(new Date(best.startTime).getTime() - kickoff.getTime())
-      ? period
-      : best
+  const closest = periods.find(
+    (period: any) =>
+      new Date(period.startTime).getTime() <= kickoff.getTime() &&
+      new Date(period.endTime).getTime() > kickoff.getTime()
   );
+  if (!closest) return null;
   return {
     forecast: closest.shortForecast || "Forecast available",
     temperature: Number.isFinite(closest.temperature)
@@ -83,6 +89,8 @@ async function fetchNwsForecast(coords: Coordinates, kickoff: Date) {
       : null,
     wind: closest.windSpeed || null,
     precipitationChance: closest.probabilityOfPrecipitation?.value ?? null,
+    forecastSource: hourlyUrl as string,
+    forecastValidAt: closest.startTime as string,
   };
 }
 
@@ -94,7 +102,8 @@ export async function getNFLWeekOutlook(
   if (cache?.key === key && cache.expiresAt > Date.now()) return cache.value;
 
   const response = await fetch(
-    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${seasonYear}&seasontype=2&week=${week}`
+    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${seasonYear}&seasontype=2&week=${week}`,
+    { signal: AbortSignal.timeout(8_000) }
   );
   if (!response.ok) throw new Error("NFL schedule is temporarily unavailable");
   const data = (await response.json()) as any;
@@ -110,17 +119,37 @@ export async function getNFLWeekOutlook(
       )?.team;
       const kickoff = new Date(event.date);
       const indoor = Boolean(competition.venue?.indoor);
-      let weather = indoor
-        ? {
-            forecast: "Indoor / climate controlled",
-            temperature: null,
-            wind: null,
-            precipitationChance: null,
-          }
-        : null;
+      // SoFi is roof-covered even though ESPN labels it outdoor.
+      // Source: https://www.sofistadium.com/plan-your-visit/a-z-guide
+      const covered = String(competition.venue?.id) === "7065";
+      const eligibleVenue =
+        competition.neutralSite === false &&
+        competition.venue?.address?.country === "USA";
+      let weather: Pick<
+        GameOutlook,
+        | "forecast"
+        | "temperature"
+        | "wind"
+        | "precipitationChance"
+        | "forecastSource"
+        | "forecastValidAt"
+      > | null =
+        indoor || covered
+          ? {
+              forecast: covered
+                ? "Covered stadium; outdoor rain forecast is not field exposure"
+                : "Indoor / climate controlled; confirm retractable roof status",
+              forecastSource: null,
+              forecastValidAt: null,
+              temperature: null,
+              wind: null,
+              precipitationChance: null,
+            }
+          : null;
 
       if (
         !weather &&
+        eligibleVenue &&
         home?.abbreviation &&
         HOME_TEAM_COORDINATES[home.abbreviation]
       ) {
@@ -143,10 +172,16 @@ export async function getNFLWeekOutlook(
         venue: competition.venue?.fullName || "Venue TBD",
         indoor,
         forecast:
-          weather?.forecast || "Forecast pending (available within 7 days)",
+          weather?.forecast ||
+          (eligibleVenue
+            ? "Kickoff-hour forecast unavailable; check closer to game time"
+            : "Forecast unavailable for this venue; home-city weather is not applicable"),
         temperature: weather?.temperature ?? null,
         wind: weather?.wind ?? null,
         precipitationChance: weather?.precipitationChance ?? null,
+        forecastSource: weather?.forecastSource ?? null,
+        forecastValidAt: weather?.forecastValidAt ?? null,
+        fetchedAt: new Date().toISOString(),
       };
     })
   );

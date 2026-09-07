@@ -2,21 +2,31 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2, Sparkles, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
 interface AIQueryBoxProps {
   leagueId: number;
+  initialQuestion?: string;
 }
 
-export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
-  const [question, setQuestion] = useState("");
+export default function AIQueryBox({
+  leagueId,
+  initialQuestion = "",
+}: AIQueryBoxProps) {
+  const [question, setQuestion] = useState(initialQuestion);
   const [answer, setAnswer] = useState<string | null>(null);
 
   const queryMutation = trpc.league.aiQuery.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.success) {
         setAnswer(data.answer);
       } else {
@@ -25,7 +35,7 @@ export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
         });
       }
     },
-    onError: (error) => {
+    onError: error => {
       toast.error("Query failed", {
         description: error.message,
       });
@@ -71,25 +81,32 @@ export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
           <div>
             <CardTitle className="text-xl">AI Strategy Assistant</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Powered by advanced AI • Get personalized insights
+              Analysis from synced ESPN lineups and league history
             </p>
           </div>
         </div>
         <CardDescription className="text-base">
-          <span className="font-semibold text-primary">Plan your next move!</span> Ask about your team's performance, get strategic advice for upcoming games, analyze opponents, or explore historical stats. I can help you dominate your league.
+          <span className="font-semibold text-primary">
+            Plan your next move!
+          </span>{" "}
+          Compare starters, explore bench options, check projected matchups, or
+          ask about league history. Player projections are estimates; confirm
+          final lineup decisions in ESPN.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Input
-            placeholder="e.g., Who had the best record in 2023?"
+            aria-label="Ask about your lineup or league"
+            placeholder="How does my lineup compare this week?"
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            onChange={e => setQuestion(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={queryMutation.isPending}
             className="flex-1"
           />
           <Button
+            aria-label="Ask AI"
             onClick={handleAsk}
             disabled={queryMutation.isPending || !question.trim()}
             size="icon"
@@ -105,15 +122,17 @@ export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
         {!answer && !queryMutation.isPending && (
           <div className="space-y-3">
             <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-              <p className="text-sm font-semibold text-primary mb-2">💡 Strategic Planning Questions:</p>
+              <p className="text-sm font-semibold text-primary mb-2">
+                💡 Strategic Planning Questions:
+              </p>
               <div className="flex flex-wrap gap-2">
-                {exampleQuestions.slice(0, 3).map((q) => (
+                {exampleQuestions.slice(0, 3).map(q => (
                   <Button
                     key={q}
                     variant="outline"
                     size="sm"
                     onClick={() => setQuestion(q)}
-                    className="text-xs hover:bg-primary/10 hover:border-primary"
+                    className="h-auto whitespace-normal text-left text-xs hover:bg-primary/10 hover:border-primary"
                   >
                     {q}
                   </Button>
@@ -121,15 +140,17 @@ export default function AIQueryBox({ leagueId }: AIQueryBoxProps) {
               </div>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-2">📊 Stats & History:</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                📊 Stats & History:
+              </p>
               <div className="flex flex-wrap gap-2">
-                {exampleQuestions.slice(3).map((q) => (
+                {exampleQuestions.slice(3).map(q => (
                   <Button
                     key={q}
                     variant="outline"
                     size="sm"
                     onClick={() => setQuestion(q)}
-                    className="text-xs"
+                    className="h-auto whitespace-normal text-left text-xs"
                   >
                     {q}
                   </Button>
