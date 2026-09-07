@@ -1,3 +1,4 @@
+import { completedResult } from "@shared/matchupResult";
 import MyWeek from "./MyWeek";
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -155,11 +156,11 @@ export default function WeeklyMatchups({
                         <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">
                           {getTeamAbbr(matchup.awayTeamId)}
                         </div>
-                        <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">
+                        <div className="font-semibold text-sm sm:text-base text-card-foreground break-words">
                           {getTeamName(matchup.awayTeamId)}
                         </div>
                         {getOwnerName(matchup.awayTeamId) && (
-                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">
+                          <div className="text-xs text-muted-foreground break-words">
                             {getOwnerName(matchup.awayTeamId)}
                           </div>
                         )}
@@ -175,7 +176,13 @@ export default function WeeklyMatchups({
                           {awayScore.toFixed(1)}
                         </div>
                         {isComplete && (
-                          <div className="text-xs text-primary">W</div>
+                          <div className="text-xs text-primary">
+                            {awayScore === homeScore
+                              ? "Tie"
+                              : awayScore > homeScore
+                                ? "Won"
+                                : "Lost"}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -197,11 +204,16 @@ export default function WeeklyMatchups({
                       </div>
                       {isComplete ? (
                         <div className="text-xs text-muted-foreground mt-2">
-                          Final
+                          {completedResult(
+                            getTeamName(matchup.homeTeamId),
+                            getTeamName(matchup.awayTeamId),
+                            homeScore,
+                            awayScore
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground mt-2">
-                          In Progress
+                          Not final
                         </div>
                       )}
                     </div>
@@ -215,11 +227,11 @@ export default function WeeklyMatchups({
                         <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">
                           {getTeamAbbr(matchup.homeTeamId)}
                         </div>
-                        <div className="font-semibold text-sm sm:text-base text-card-foreground line-clamp-1 max-w-[140px] sm:max-w-none">
+                        <div className="font-semibold text-sm sm:text-base text-card-foreground break-words">
                           {getTeamName(matchup.homeTeamId)}
                         </div>
                         {getOwnerName(matchup.homeTeamId) && (
-                          <div className="text-xs text-muted-foreground line-clamp-1 max-w-[140px] sm:max-w-none">
+                          <div className="text-xs text-muted-foreground break-words">
                             {getOwnerName(matchup.homeTeamId)}
                           </div>
                         )}
@@ -235,7 +247,13 @@ export default function WeeklyMatchups({
                           {homeScore.toFixed(1)}
                         </div>
                         {isComplete && (
-                          <div className="text-xs text-primary">W</div>
+                          <div className="text-xs text-primary">
+                            {homeScore === awayScore
+                              ? "Tie"
+                              : homeScore > awayScore
+                                ? "Won"
+                                : "Lost"}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -244,14 +262,19 @@ export default function WeeklyMatchups({
                     {isComplete && (
                       <div className="sm:hidden px-3 pb-3 text-center">
                         <div className="text-xs text-muted-foreground">
-                          Final
+                          {completedResult(
+                            getTeamName(matchup.homeTeamId),
+                            getTeamName(matchup.awayTeamId),
+                            homeScore,
+                            awayScore
+                          )}
                         </div>
                       </div>
                     )}
 
                     {/* All-time history between these two managers */}
                     {matchup.series && matchup.series.meetings > 0 && (
-                      <div className="border-t bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:px-4">
+                      <div className="sm:col-span-3 border-t bg-muted/30 px-3 py-3 text-xs leading-relaxed text-muted-foreground sm:px-4">
                         <span className="font-medium text-card-foreground">
                           {matchup.series.leader === "even"
                             ? `All-time series tied ${matchup.series.homeWins}–${matchup.series.awayWins}`
@@ -279,15 +302,19 @@ export default function WeeklyMatchups({
                             </span>
                           )}
                         {matchup.series.lastMeeting && (
-                          <span>
-                            {" · "}last met{" "}
+                          <span className="block mt-1">
+                            Last meeting:{" "}
                             {matchup.series.lastMeeting.seasonYear}
                             {matchup.series.lastMeeting.isPlayoffs
                               ? " playoffs"
                               : ` week ${matchup.series.lastMeeting.week}`}
                             {", "}
-                            {matchup.series.lastMeeting.homeScore.toFixed(1)}–
-                            {matchup.series.lastMeeting.awayScore.toFixed(1)}
+                            {completedResult(
+                              getTeamName(matchup.homeTeamId),
+                              getTeamName(matchup.awayTeamId),
+                              matchup.series.lastMeeting.homeScore,
+                              matchup.series.lastMeeting.awayScore
+                            )}
                           </span>
                         )}
                       </div>

@@ -73,7 +73,7 @@ export default function AIQueryBox({
 
   return (
     <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/30 shadow-lg">
-      <CardHeader className="space-y-3">
+      <CardHeader className="space-y-3 px-3 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/20">
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
@@ -94,7 +94,7 @@ export default function AIQueryBox({
           final lineup decisions in ESPN.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-3 sm:px-6">
         <div className="flex gap-2">
           <Input
             aria-label="Ask about your lineup or league"
@@ -168,7 +168,7 @@ export default function AIQueryBox({
         )}
 
         {answer && (
-          <div className="p-4 bg-background rounded-lg border">
+          <div className="p-3 sm:p-4 bg-background rounded-lg border text-sm leading-relaxed break-words [&_ul]:pl-4 [&_li]:my-1 [&_p]:my-2">
             <Streamdown>{answer}</Streamdown>
           </div>
         )}
