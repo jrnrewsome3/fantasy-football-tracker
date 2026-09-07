@@ -81,3 +81,15 @@ it("supplies personal identity, both lineups, bench and computed starter-only ma
   ])
     expect(prompt).toContain(text);
 });
+
+it("routes historical streak questions without requiring roster, weather or LLM access", async () => {
+  const result = await answerLeagueQuestion(
+    1,
+    "Who has the longest winning streak in this league?",
+    77
+  );
+  expect(result.success).toBe(true);
+  expect(result.answer).toContain("No qualifying completed-game streak");
+  expect(m.myWeek).not.toHaveBeenCalled();
+  expect(m.llm).not.toHaveBeenCalled();
+});

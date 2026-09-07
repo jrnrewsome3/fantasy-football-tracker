@@ -1,3 +1,4 @@
+import { isStreakQuestion, answerStreakQuestion } from "./streakFacts";
 import { isLineupQuestion, answerMatchupQuestion } from "./matchupFacts";
 import { compareLineups, projectedTotal } from "../shared/lineupComparison";
 import { getNFLWeekOutlook } from "./weather";
@@ -59,6 +60,28 @@ export async function answerLeagueQuestion(
       };
     }
 
+    // Records take priority over broad lineup keywords such as "my team".
+    if (isStreakQuestion(question)) {
+      const [historyTeams, historyGames] = await Promise.all([
+        getTeamsByLeague(leagueId),
+        getAllMatchupsByLeague(leagueId),
+      ]);
+      const membership = /\bmy\b|\bhave i\b/i.test(question)
+        ? await (
+            await import("./leagueAccess")
+          ).getLeagueMembership(leagueId, userId)
+        : null;
+      return {
+        success: true,
+        answer: answerStreakQuestion(
+          historyTeams,
+          historyGames,
+          question,
+          league[0].seasonYear,
+          membership?.espnTeamId
+        ),
+      };
+    }
     if (isLineupQuestion(question)) {
       const seasonTeams = await getTeamsByLeague(leagueId);
       const named = /\bmy\b/i.test(question)
@@ -279,6 +302,9 @@ League Overview:
 
 CHAMPIONSHIP HISTORY (authoritative — this is who actually won):
 ${podium.length ? podium.map(s => `- ${s.seasonYear}: champion ${s.championName}${s.runnerUpName ? `, runner-up ${s.runnerUpName}` : ""}${s.thirdPlaceName ? `, third ${s.thirdPlaceName}` : ""}`).join("\n") : "- No championship records available"}
+
+CALCULATED STREAK RECORDS (completed results, never count streaks from recent games):
+${answerStreakQuestion(leagueTeams, allMatchups, "longest winning and losing streak", league[0].seasonYear)}
 
 CAREER RECORDS (regular season, by owner, across all seasons):
 ${careerLines.join("\n")}
