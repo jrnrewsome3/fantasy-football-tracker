@@ -1,3 +1,4 @@
+import { isHistoricalQuestion, answerHistoryQuestion } from "./historyFacts";
 import { isStreakQuestion, answerStreakQuestion } from "./streakFacts";
 import { isLineupQuestion, answerMatchupQuestion } from "./matchupFacts";
 import { compareLineups, projectedTotal } from "../shared/lineupComparison";
@@ -82,6 +83,31 @@ export async function answerLeagueQuestion(
         ),
       };
     }
+    if (isHistoricalQuestion(question)) {
+      const [historyTeams, historyGames] = await Promise.all([
+        getTeamsByLeague(leagueId),
+        getAllMatchupsByLeague(leagueId),
+      ]);
+      const membership = /\bmy\b|\bhave i\b|\bdid i\b/i.test(question)
+        ? await (
+            await import("./leagueAccess")
+          ).getLeagueMembership(leagueId, userId)
+        : null;
+      return {
+        success: true,
+        answer: answerHistoryQuestion(
+          historyTeams,
+          historyGames,
+          question,
+          league[0].seasonYear,
+          membership?.espnTeamId,
+          await db
+            .select()
+            .from(leagueSeasons)
+            .where(eq(leagueSeasons.leagueId, leagueId))
+        ),
+      };
+    }
     if (isLineupQuestion(question)) {
       const seasonTeams = await getTeamsByLeague(leagueId);
       const named = /\bmy\b/i.test(question)
@@ -151,8 +177,12 @@ export async function answerLeagueQuestion(
           .map(team => {
             const teamMatches = matches.filter(
               m =>
-                m.homeTeamId === team.espnTeamId ||
-                m.awayTeamId === team.espnTeamId
+                m.isComplete &&
+                !m.isPlayoffs &&
+                m.homeScore !== null &&
+                m.awayScore !== null &&
+                (m.homeTeamId === team.espnTeamId ||
+                  m.awayTeamId === team.espnTeamId)
             );
             let wins = 0,
               losses = 0,
@@ -298,7 +328,7 @@ League Overview:
 - Current Season: ${league[0].seasonYear}
 - Total Teams: ${currentTeams.length}
 - Historical Seasons: ${Object.keys(matchupsBySeason).join(", ")}
-- Total Games Played: ${allMatchups.length}
+- Completed Games: ${allMatchups.filter(m => m.isComplete).length}
 
 CHAMPIONSHIP HISTORY (authoritative — this is who actually won):
 ${podium.length ? podium.map(s => `- ${s.seasonYear}: champion ${s.championName}${s.runnerUpName ? `, runner-up ${s.runnerUpName}` : ""}${s.thirdPlaceName ? `, third ${s.thirdPlaceName}` : ""}`).join("\n") : "- No championship records available"}
@@ -312,7 +342,7 @@ ${careerLines.join("\n")}
 Current Season Teams (${league[0].seasonYear}):
 ${currentTeams.map(t => `- ${t.name} (${t.ownerName}): ${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ""} record, ${(t.pointsFor || 0).toFixed(1)} PF, ${(t.pointsAgainst || 0).toFixed(1)} PA`).join("\n")}
 
-Historical Season Leaders:
+Historical Regular-Season Leaders (completed games only):
 ${seasonStats
   .map(
     s =>
@@ -326,7 +356,7 @@ ${seasonStats
   )
   .join("\n")}
 
-Top 5 Highest Scoring Games (All-Time):
+Top 5 Combined Matchup Totals (both teams added; NOT individual scoring records):
 ${highScoringGames
   .slice(0, 5)
   .map(
@@ -335,9 +365,11 @@ ${highScoringGames
   )
   .join("\n")}
 
-Recent Matchups (Last 15):
+Most Recent Completed Matchups (up to 15; not a full historical record):
 ${allMatchups
-  .slice(-15)
+  .filter(m => m.isComplete && m.homeScore !== null && m.awayScore !== null)
+  .sort((a, b) => b.seasonYear - a.seasonYear || b.week - a.week || b.id - a.id)
+  .slice(0, 15)
   .map(m => {
     const homeTeam = findTeam(m.homeTeamId, m.seasonYear);
     const awayTeam = findTeam(m.awayTeamId, m.seasonYear);
@@ -346,7 +378,8 @@ ${allMatchups
   .join("\n")}
 
 Instructions:
-- Answer with specific numbers, team names, and years
+- Use only explicitly supplied calculated facts. Never derive head-to-head records or individual scoring rankings from these summaries. Home/away fields in archived records are storage positions, not verified venue assignments.
+- Answer with supplied numbers, team names, and years
 - When asked about a specific season, use that season's data
 - Format your response clearly with bullet points or numbered lists when appropriate
 - Include context and comparisons to make insights meaningful

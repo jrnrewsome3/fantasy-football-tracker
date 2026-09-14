@@ -93,3 +93,18 @@ it("routes historical streak questions without requiring roster, weather or LLM 
   expect(m.myWeek).not.toHaveBeenCalled();
   expect(m.llm).not.toHaveBeenCalled();
 });
+
+it.each([
+  "What is Ty’s highest scoring performances",
+  "Roger and Daly head-to-head history",
+  "What is Roger scoring record all-time?",
+  "Roger matchup Week 2 2024",
+])(
+  "keeps historical records out of the model and lineup path: %s",
+  async question => {
+    const result = await answerLeagueQuestion(1, question, 77);
+    expect(result.success).toBe(true);
+    expect(m.myWeek).not.toHaveBeenCalled();
+    expect(m.llm).not.toHaveBeenCalled();
+  }
+);
