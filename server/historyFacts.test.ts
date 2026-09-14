@@ -246,3 +246,140 @@ it("calculates career W-L from completed regular-season games by default", () =>
   );
   expect(isHistoricalQuestion("Who has the most wins?")).toBe(true);
 });
+
+const finalTeams = [
+  {
+    espnTeamId: -7,
+    seasonYear: 2022,
+    name: "Historic Bradley",
+    ownerName: "Bradley",
+    franchiseKey: "bradley",
+  },
+  {
+    espnTeamId: -3,
+    seasonYear: 2022,
+    name: "Historic Roger",
+    ownerName: "Roger",
+    franchiseKey: "roger",
+  },
+  {
+    espnTeamId: 7,
+    seasonYear: 2026,
+    name: "Bath Time",
+    ownerName: "Bradley",
+    franchiseKey: "bradley",
+  },
+  {
+    espnTeamId: 3,
+    seasonYear: 2026,
+    name: "Mayhem Rising",
+    ownerName: "Roger",
+    franchiseKey: "roger",
+  },
+];
+const finalPodium = [
+  { seasonYear: 2022, championName: "Bradley", runnerUpName: "Roger" },
+];
+const finalGame = game(88, {
+  week: 18,
+  homeTeamId: -3,
+  awayTeamId: -7,
+  homeScore: 89.2,
+  awayScore: 130.06,
+  isPlayoffs: 1,
+});
+const championshipAnswer = (
+  q: string,
+  matches = [finalGame],
+  podium = finalPodium,
+  mine?: number
+) => answerHistoryQuestion(finalTeams, matches, q, 2026, mine, podium);
+it.each([
+  "Who did Bradley play in the championship game he was in?",
+  "Who did Bradley play in the championship?",
+  "What was the score of Bradley’s championship?",
+  "Who did Roger face in the 2022 championship?",
+  "Show the championship game in 2022",
+])("answers championship opponent and final score: %s", q => {
+  expect(championshipAnswer(q)).toContain(
+    "2022 championship: Bradley defeated Roger, 130.06–89.20"
+  );
+});
+it("handles authenticated identity and team-name aliases", () => {
+  expect(
+    championshipAnswer(
+      "Who did I play in the championship?",
+      undefined,
+      undefined,
+      3
+    )
+  ).toContain("Bradley defeated Roger");
+  expect(
+    championshipAnswer("Who did Bath Time play in the championship?")
+  ).toContain("Bradley defeated Roger");
+});
+it("keeps title counts separate from appearances and does not use regular-season meetings", () => {
+  expect(
+    championshipAnswer("How many championships has Bradley won?")
+  ).toContain("Bradley: 1 championship (2022)");
+  expect(
+    championshipAnswer("How many championship games has Roger played?")
+  ).toContain("Roger: 1 recorded championship appearance");
+  expect(
+    championshipAnswer("Who did Bradley play in the championship?", [
+      game(2, { homeTeamId: -7, awayTeamId: -3, homeScore: 999, awayScore: 1 }),
+      finalGame,
+    ])
+  ).not.toContain("999");
+});
+it("reports missing or conflicting final scores without inventing a value", () => {
+  for (const matches of [
+    [],
+    [game(88, { ...finalGame, homeScore: null })],
+    [{ ...finalGame, isComplete: 0 }],
+    [finalGame, { ...finalGame, id: 89 }],
+    [{ ...finalGame, homeScore: 200 }],
+  ]) {
+    const result = championshipAnswer(
+      "Who did Bradley play in the championship?",
+      matches
+    );
+    expect(result).toContain("Bradley");
+    expect(result).toContain("Roger");
+    expect(result).not.toContain("130.06–89.20");
+  }
+});
+it("distinguishes multiweek finals and ignores repeated copies of one row", () => {
+  const result = championshipAnswer(
+    "Who did Bradley play in the championship?",
+    [
+      { ...finalGame, scoringWeeks: 2 },
+      { ...finalGame, scoringWeeks: 2 },
+    ]
+  );
+  expect(result).toContain("130.06–89.20");
+  expect(result).toContain("combined score over 2 weeks");
+});
+it("lists multiple appearances including losses", () => {
+  const podium = [
+    ...finalPodium,
+    { seasonYear: 2026, championName: "Roger", runnerUpName: "Bradley" },
+  ];
+  const result = championshipAnswer(
+    "Who did Bradley play in his championship games?",
+    [
+      finalGame,
+      game(90, {
+        seasonYear: 2026,
+        homeTeamId: 3,
+        awayTeamId: 7,
+        homeScore: 150,
+        awayScore: 110,
+        isPlayoffs: 1,
+      }),
+    ],
+    podium
+  );
+  expect(result).toContain("Bradley: 2 recorded championship appearances");
+  expect(result).toContain("Roger defeated Bradley, 150.00–110.00");
+});

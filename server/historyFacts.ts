@@ -117,6 +117,15 @@ export function answerHistoryQuestion(
     );
     if (!known.length)
       return "No championship record is stored for this selection; I won't infer a champion from standings.";
+    const gameDetails =
+      /\b(?:play(?:ed)?|opponents?|against|scores?|scoring|beat|defeat(?:ed)?|face[ds]?|games?|finals?|appearances?)\b/i.test(
+        q
+      );
+    if (gameDetails) {
+      if (!named.length && !season && !/\b(?:all|league|every)\b/i.test(q))
+        return "Please name a manager or season so I can find the championship opponent and score.";
+      return answerChampionshipGames(teams, games, known, named);
+    }
     const ownerNames = new Set(named.map(t => normalize(label(t))));
     const rows = new Map<string, { name: string; years: number[] }>();
     for (const p of known) {
@@ -305,4 +314,77 @@ export function answerHistoryQuestion(
       selected.has(identity(r.a))
   );
   return `${results.length ? results.map(r => `- ${r.g.seasonYear} Week ${r.g.week}: ${label(r.h)} ${r.hs.toFixed(2)} – ${label(r.a)} ${r.as.toFixed(2)}; ${r.hs === r.as ? "tie" : `${label(r.hs > r.as ? r.h : r.a)} won`}${r.g.scoringWeeks > 1 ? ` (${r.g.scoringWeeks}-week combined matchup)` : ""}.`).join("\n") : "No qualifying completed matchups found."}\n\n${source}`;
+}
+
+/** A champion/runner-up pairing identifies the final; standings or a high playoff score do not. */
+function answerChampionshipGames(
+  teams: HistoryTeam[],
+  games: HistoryGame[],
+  podium: SeasonPodium[],
+  named: HistoryTeam[]
+): string {
+  const selected = named.map(t => normalize(label(t)));
+  const finals = podium
+    .filter(p =>
+      selected.every(n =>
+        [p.championName, p.runnerUpName].some(
+          name => name && normalize(name) === n
+        )
+      )
+    )
+    .sort((a, b) => a.seasonYear - b.seasonYear);
+  if (!finals.length)
+    return "No championship appearance is recorded for that selection in the stored championship table.";
+  const lines = finals.map(p => {
+    const champion = p.championName!.trim();
+    const runner = p.runnerUpName?.trim();
+    if (!runner)
+      return `- **${p.seasonYear}: ${champion} won the championship.** The opponent and final score are not recorded in the championship table.`;
+    const seasonTeams = teams.filter(t => t.seasonYear === p.seasonYear);
+    const resolve = (name: string) => {
+      const candidates = seasonTeams.filter(
+        t => normalize(label(t)) === normalize(name)
+      );
+      return candidates.length === 1 ? candidates[0] : undefined;
+    };
+    const winnerTeam = resolve(champion),
+      runnerTeam = resolve(runner);
+    const pairing = `**${p.seasonYear} championship: ${champion} defeated ${runner}**`;
+    if (
+      !winnerTeam ||
+      !runnerTeam ||
+      identity(winnerTeam) === identity(runnerTeam)
+    )
+      return `- ${pairing}. The final score cannot be verified because the season's team identities are unresolved.`;
+    const seen = new Set<number>();
+    const candidates = games.filter(g => {
+      if (g.seasonYear !== p.seasonYear || !g.isPlayoffs || seen.has(g.id))
+        return false;
+      seen.add(g.id);
+      return (
+        (g.homeTeamId === winnerTeam.espnTeamId &&
+          g.awayTeamId === runnerTeam.espnTeamId) ||
+        (g.awayTeamId === winnerTeam.espnTeamId &&
+          g.homeTeamId === runnerTeam.espnTeamId)
+      );
+    });
+    if (candidates.length !== 1)
+      return `- ${pairing}. ${candidates.length ? "Multiple postseason matchups match this pairing, so the final score needs verification." : "The final score is not available in the stored postseason matchups."}`;
+    const g = candidates[0];
+    const wonAtHome = g.homeTeamId === winnerTeam.espnTeamId;
+    const winnerScore = wonAtHome ? g.homeScore : g.awayScore;
+    const runnerScore = wonAtHome ? g.awayScore : g.homeScore;
+    if (
+      !g.isComplete ||
+      winnerScore === null ||
+      runnerScore === null ||
+      !Number.isFinite(winnerScore) ||
+      !Number.isFinite(runnerScore)
+    )
+      return `- ${pairing}. A complete final score is not available in the stored matchup.`;
+    if (winnerScore <= runnerScore)
+      return `- **${p.seasonYear}: the championship table lists ${champion} as champion and ${runner} as runner-up.** The matchup scores conflict with that result; I won't present them as a verified final.`;
+    return `- **${p.seasonYear} championship: ${champion} defeated ${runner}, ${winnerScore.toFixed(2)}–${runnerScore.toFixed(2)}.**${g.scoringWeeks > 1 ? ` This is the combined score over ${g.scoringWeeks} weeks.` : ""}`;
+  });
+  return `${named.length === 1 ? `**${label(named[0])}: ${finals.length} recorded championship appearance${finals.length === 1 ? "" : "s"}**\n\n` : ""}${lines.join("\n")}\n\nSource: this league's stored championship table and postseason matchups. Final scores are shown only when one recorded matchup matches the champion and runner-up and agrees with the result.`;
 }
