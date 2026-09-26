@@ -12,6 +12,7 @@ import { and, eq, lt } from "drizzle-orm";
 import { leagueSeasons, matchups, teams } from "../drizzle/schema";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
+import { buildWeekThreePlayoffContext } from "./editorialFacts";
 import { getLeagueById } from "./leagueDb";
 import { getMatchupSeries } from "./rivalry";
 
@@ -226,6 +227,7 @@ async function buildPreviewBrief(
     ...lines,
     standings.length ? `\nSTANDINGS ENTERING WEEK ${week}` : "",
     ...standings.map(s => `- ${s}`),
+    ...(week === 4 ? buildWeekThreePlayoffContext(identity, played) : []),
   ]
     .filter(Boolean)
     .join("\n");
@@ -368,6 +370,7 @@ async function buildRecapBrief(
       (r, index) =>
         `- ${index + 1}. ${r.label} ${r.wins}-${r.losses} (${r.wins > r.losses ? "winning record" : r.wins < r.losses ? "losing record" : "even record"}), ${r.points.toFixed(1)} points`
     ),
+    ...(week === 3 ? buildWeekThreePlayoffContext(identity, seasonGames) : []),
   ].join("\n");
 }
 
@@ -515,6 +518,7 @@ Voice: a sportswriter who has covered this league for years and is not impressed
 
 Hard rules:
 - Every number, record, score and streak you use must come from the brief. Never invent, round differently, or estimate.
+- When the brief includes WEEK 3 PLAYOFF-RATE CONTEXT, use at least one relevant benchmark in the update. Keep its source and 2025 basis clear, and describe it as a historical benchmark rather than this league's own calculated odds or a guarantee.
 - Never state anything the brief does not. In particular: do not say anyone has clinched, won, been eliminated from, or locked up anything unless the brief says so in those words. Standing first in November is not winning anything.
 - The brief labels every record as winning, losing or even. Use that label. A record with more losses than wins is a losing record no matter how the team is playing.
 - Streaks are given to you when they exist. Never count one yourself and never say "first loss in N weeks" unless the brief states that streak.
