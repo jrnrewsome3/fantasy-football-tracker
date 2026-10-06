@@ -1,3 +1,4 @@
+import { summarizeLeagueRecords } from "./recordBook";
 import { isHistoricalQuestion, answerHistoryQuestion } from "./historyFacts";
 import { isStreakQuestion, answerStreakQuestion } from "./streakFacts";
 import { isLineupQuestion, answerMatchupQuestion } from "./matchupFacts";
@@ -67,7 +68,7 @@ export async function answerLeagueQuestion(
         getTeamsByLeague(leagueId),
         getAllMatchupsByLeague(leagueId),
       ]);
-      const membership = /\bmy\b|\bhave i\b/i.test(question)
+      const membership = /\b(?:my|i)\b/i.test(question)
         ? await (
             await import("./leagueAccess")
           ).getLeagueMembership(leagueId, userId)
@@ -335,6 +336,10 @@ ${podium.length ? podium.map(s => `- ${s.seasonYear}: champion ${s.championName}
 
 CALCULATED STREAK RECORDS (completed results, never count streaks from recent games):
 ${answerStreakQuestion(leagueTeams, allMatchups, "longest winning and losing streak", league[0].seasonYear)}
+
+CALCULATED RECORD BOOK FOR EVERY MANAGER:
+${JSON.stringify(summarizeLeagueRecords(leagueTeams, allMatchups))}
+Use these calculated manager-specific facts instead of treating absence from the league-wide leader list as proof a manager never had a streak. Latest sequences stay within one season; longest/current streaks can carry across seasons. A 4-0 start means the first four regular-season games. Do not infer an unsupported record, latest occurrence, or count from aggregate wins/losses or from a missing field; say the calculation is unavailable.
 
 CAREER RECORDS (regular season, by owner, across all seasons):
 ${careerLines.join("\n")}
