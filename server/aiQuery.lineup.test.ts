@@ -108,3 +108,40 @@ it.each([
     expect(m.llm).not.toHaveBeenCalled();
   }
 );
+
+it.each([
+  "Has Willie won 2 in a row ever?",
+  "When was the last time Willie won two games in a row?",
+  "When did Willie win 2 straight?",
+  "When did Willie get back-to-back wins?",
+])(
+  "routes consecutive-result wording without an LLM call: %s",
+  async question => {
+    const result = await answerLeagueQuestion(1, question, 77);
+    expect(result.success).toBe(true);
+    expect(result.answer).toContain("Please name one manager");
+    expect(m.myWeek).not.toHaveBeenCalled();
+    expect(m.llm).not.toHaveBeenCalled();
+  }
+);
+
+it.each([
+  "When is the last time someone went 4-0?",
+  "Who last started 0-4?",
+  "List all 3-1 season starts",
+])("routes season starts without model inference: %s", async question => {
+  const result = await answerLeagueQuestion(1, question, 77);
+  expect(result.success).toBe(true);
+  expect(result.answer).toContain("season start");
+  expect(m.myWeek).not.toHaveBeenCalled();
+  expect(m.llm).not.toHaveBeenCalled();
+});
+
+it("supplies manager-specific calculated evidence to generic responses", async () => {
+  await answerLeagueQuestion(1, "Summarize this league", 77);
+  const prompt = m.llm.mock.calls[0][0].messages[0].content;
+  expect(prompt).toContain("CALCULATED RECORD BOOK FOR EVERY MANAGER");
+  expect(prompt).toContain('"manager":"Roger"');
+  expect(prompt).toContain('"latestTwoWins":[]');
+  expect(prompt).toContain("absence from the league-wide leader list");
+});
